@@ -2,9 +2,12 @@
 
 ## Installation
 
-### Choose the correct branch
-- Godot 3.x: use `main`
-- Godot 4.x: use `godot4`
+This repository is for **Godot 4.x**. For Godot 3.x, see [gdmetrics-g3](https://github.com/JaponBaligi/gdmetrics-g3).
+
+```bash
+git clone https://github.com/JaponBaligi/gdmetrics-g4
+cd gdmetrics-g4
+```
 
 ### Install the plugin
 1. Copy `addons/gdscript_complexity` into your project's `addons/` directory.
@@ -43,14 +46,8 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 4. Use **Configure** to edit thresholds and reporting options.
 
 ### CLI
-Godot 4.x:
 ```bash
 godot --headless --script cli/ci_test.gd -- --project-path . --output report.json --csv-output report.csv
-```
-
-Godot 3.5:
-```bash
-godot --script cli/ci_test.gd -- --project-path . --output report.json --csv-output report.csv
 ```
 
 ### Auto export
@@ -68,7 +65,7 @@ Enable `report.auto_export` and specify formats:
 
 ## Troubleshooting
 
-- **No editor annotations**: Godot 3.x does not support editor annotations. On Godot 4.x, if annotations are unavailable, the plugin logs warnings to the console.
+- **No editor annotations**: If annotations are unavailable, the plugin logs warnings to the console.
 - **CSV not generated**: Ensure `report.formats` includes `csv`, set `report.csv_output_path`, or pass `--csv-output` in CLI mode.
 - **Files analyzed: 0**: Check `include`/`exclude` patterns and confirm the project contains `.gd` files under `res://`.
 - **Stale results**: Disable caching (`performance.enable_caching = false`) or delete the cache directory.
@@ -77,6 +74,5 @@ Enable `report.auto_export` and specify formats:
 ## FAQ
 
 - **Does it modify scripts?** No. It reads `.gd` files and writes reports.
-- **Why is Godot 3.x less accurate?** The analyzer uses heuristics and Godot 3.x has fewer parser hooks.
-- **Which branch should I use?** `main` for Godot 3.x, `godot4` for Godot 4.x.
+- **Need Godot 3.x?** Use [gdmetrics-g3](https://github.com/JaponBaligi/gdmetrics-g3).
 - **Can I disable editor warnings?** Yes. Set `report.annotate_editor` to `false`.
