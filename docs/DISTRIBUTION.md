@@ -19,6 +19,8 @@ Git tags use a `v` prefix (example: `v0.2.0`). `plugin.cfg` `version=` omits the
 
 Ship **one** Pride version at a time: implement → CI → tag → GitHub Release → then start the next DEFAULT/PROUD slice.
 
+**1.0.0 (PROUD)** freezes the JSON report and config contract documented in [SCHEMA.md](SCHEMA.md). Breaking schema/config changes require **2.0.0**.
+
 ## Package contents
 
 Release zips include:
@@ -26,8 +28,9 @@ Release zips include:
 - `addons/gdscript_complexity/`
 - `cli/` (including `analyze_project.gd`)
 - `examples/github-actions/`
-- `docs/`, `README.md`, `LICENSE`
+- `docs/` (including `SCHEMA.md`, `USER_GUIDE.md`, `DISTRIBUTION.md`), `README.md`, `LICENSE`
 - `complexity_config.example.json`
+- `scripts/sync_core.ps1` (maintainer helper; optional for consumers)
 
 ## Consumer CI
 

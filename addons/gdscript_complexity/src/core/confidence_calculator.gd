@@ -1,5 +1,5 @@
 extends Object
-class_name ConfidenceCalculator
+# class_name ConfidenceCalculator
 
 # confidence score calculator
 # calculates parse confidence based on token coverage, indentation consistency,
@@ -7,6 +7,7 @@ class_name ConfidenceCalculator
 
 const ADDON_ROOT := "res://addons/gdscript_complexity"
 const SRC_ROOT := ADDON_ROOT + "/src"
+const CORE_ROOT := SRC_ROOT + "/core"
 
 class ConfidenceResult:
 	var score: float = 0.0
@@ -39,7 +40,7 @@ func calculate_confidence(tokens: Array, errors: Array, version_adapter = null, 
 		result.score = 0.0
 		return result
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var token_coverage = _calculate_token_coverage(tokens)
 	var indentation_consistency = _calculate_indentation_consistency(tokens)
@@ -95,7 +96,7 @@ func _calculate_token_coverage(tokens: Array) -> float:
 	if tokens.size() == 0:
 		return 0.0
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var total_chars = 0
 	var recognized_chars = 0
@@ -116,7 +117,7 @@ func _calculate_indentation_consistency(tokens: Array) -> float:
 	if tokens.size() == 0:
 		return 1.0
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var indent_levels: Array = []
 	var has_tabs = false
@@ -175,7 +176,7 @@ func _calculate_block_balance(tokens: Array) -> float:
 	if tokens.size() == 0:
 		return 1.0
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var paren_depth = 0
 	var bracket_depth = 0
@@ -256,3 +257,9 @@ func get_cap_reason() -> String:
 		return ""
 	return result.cap_reason
 
+
+func _tokenizer_script_path() -> String:
+	var major = Engine.get_version_info().get("major", 0)
+	if major < 4:
+		return SRC_ROOT + "/gd3/tokenizer.gd"
+	return SRC_ROOT + "/tokenizer.gd"

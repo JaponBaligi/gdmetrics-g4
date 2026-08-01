@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 extends RefCounted
 # Processes files in batches without blocking UI
 
@@ -42,7 +42,7 @@ func start_analysis(root_path: String, config_data, adapter = null):  # ConfigMa
 	
 	config = config_data
 	version_adapter = adapter
-	_error_codes = load(SRC_ROOT + "/error_codes.gd").new()
+	_error_codes = load(SRC_ROOT + "/core/error_codes.gd").new()
 	_ensure_logger(config)
 	batch_analyzer = load(SRC_ROOT + "/batch_analyzer.gd").new()
 	batch_analyzer.version_adapter = version_adapter
@@ -257,7 +257,7 @@ func _calculate_worst_offenders():
 	project_result.worst_cog_files = cog_sorted.slice(0, min(10, cog_sorted.size()))
 
 func _set_error_summary():
-	var helper = load(SRC_ROOT + "/error_summary.gd").new()
+	var helper = load(SRC_ROOT + "/core/error_summary.gd").new()
 	var summary = helper.summarize(project_result.file_results, project_result.errors)
 	project_result.error_summary = summary.by_code
 	project_result.error_severity_summary = summary.by_severity
@@ -278,7 +278,7 @@ func is_analysis_running() -> bool:
 func _ensure_logger(config_data):
 	if logger != null:
 		return
-	logger = load(SRC_ROOT + "/logger.gd").new()
+	logger = load(SRC_ROOT + "/core/logger.gd").new()
 	if config_data != null and config_data.logging_config != null:
 		logger.configure(config_data.logging_config)
 
@@ -292,11 +292,11 @@ func _ensure_tools():
 		return
 	var tokenizer_script = SRC_ROOT + "/tokenizer.gd"
 	_tokenizer_class = load(tokenizer_script)
-	_detector_instance = load(SRC_ROOT + "/control_flow_detector.gd").new()
-	_function_detector_instance = load(SRC_ROOT + "/function_detector.gd").new()
-	_class_detector_instance = load(SRC_ROOT + "/class_detector.gd").new()
-	_cc_calc_instance = load(SRC_ROOT + "/cc_calculator.gd").new()
-	_cog_calc_instance = load(SRC_ROOT + "/cog_complexity_calculator.gd").new()
-	_confidence_calc_instance = load(SRC_ROOT + "/confidence_calculator.gd").new()
+	_detector_instance = load(SRC_ROOT + "/core/control_flow_detector.gd").new()
+	_function_detector_instance = load(SRC_ROOT + "/core/function_detector.gd").new()
+	_class_detector_instance = load(SRC_ROOT + "/core/class_detector.gd").new()
+	_cc_calc_instance = load(SRC_ROOT + "/core/cc_calculator.gd").new()
+	_cog_calc_instance = load(SRC_ROOT + "/core/cog_complexity_calculator.gd").new()
+	_confidence_calc_instance = load(SRC_ROOT + "/core/confidence_calculator.gd").new()
 	_tools_ready = true
 

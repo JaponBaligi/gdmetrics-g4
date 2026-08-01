@@ -10,7 +10,7 @@ var tests_passed = 0
 var tests_failed = 0
 
 func _init():
-	confidence_calculator = load("res://addons/gdscript_complexity/src/confidence_calculator.gd").new()
+	confidence_calculator = load("res://addons/gdscript_complexity/src/core/confidence_calculator.gd").new()
 	version_adapter = load("res://addons/gdscript_complexity/version_adapter.gd").new()
 	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	

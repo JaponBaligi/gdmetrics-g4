@@ -1,5 +1,5 @@
-﻿extends Object
-class_name FunctionDetector
+extends Object
+# class_name FunctionDetector
 
 # function boundary detector for
 # detects: func, static func, signal declarations
@@ -7,6 +7,7 @@ class_name FunctionDetector
 
 const ADDON_ROOT := "res://addons/gdscript_complexity"
 const SRC_ROOT := ADDON_ROOT + "/src"
+const CORE_ROOT := SRC_ROOT + "/core"
 
 class FunctionInfo:
 	var name: String
@@ -37,7 +38,7 @@ func detect_functions(tokens: Array) -> Array:
 	if tokens.size() == 0:
 		return []
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var i = 0
 	var current_function: FunctionInfo = null
@@ -100,7 +101,7 @@ func _get_line_indent(tokens: Array, token_index: int) -> int:
 	if token_index <= 0:
 		return 0
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var target_line = tokens[token_index].line
 	var i = token_index - 1
 	
@@ -138,7 +139,7 @@ func _count_indent(whitespace: String) -> int:
 
 func _parse_function_declaration(tokens: Array, start: int) -> Dictionary:
 
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var i = start
 	var func_type = "func"
 	var func_name = ""
@@ -215,7 +216,7 @@ func _parse_function_declaration(tokens: Array, start: int) -> Dictionary:
 	return {"function": func_info, "next_index": i}
 
 func _parse_signal_declaration(tokens: Array, start: int) -> Dictionary:
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var i = start + 1  # Skip "signal"
 	var signal_name = ""
 	while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
@@ -254,3 +255,9 @@ func get_errors() -> Array:
 	return errors.duplicate()
 
 
+
+func _tokenizer_script_path() -> String:
+	var major = Engine.get_version_info().get("major", 0)
+	if major < 4:
+		return SRC_ROOT + "/gd3/tokenizer.gd"
+	return SRC_ROOT + "/tokenizer.gd"

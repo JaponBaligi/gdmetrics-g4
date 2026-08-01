@@ -1,4 +1,4 @@
-﻿extends Object
+extends Object
 # class_name BatchAnalyzer  # Commented out to avoid parse-time cascade
 
 # Batch analyzer
@@ -62,7 +62,7 @@ var _time_helper_path: String = ""
 func analyze_project(root_path: String, config, adapter = null):  # -> ProjectResult - nested class
 	project_result = ProjectResult.new()
 	version_adapter = adapter
-	_error_codes = load(ADDON_SRC + "error_codes.gd").new()
+	_error_codes = load(ADDON_SRC + "core/error_codes.gd").new()
 	_ensure_logger(config)
 	project_result.performance = {}
 	var profiling = false
@@ -139,12 +139,12 @@ func _ensure_tools():
 	if _tools_ready:
 		return
 	_tokenizer_class = load(_get_tokenizer_script())
-	_detector_instance = load(ADDON_SRC + "control_flow_detector.gd").new()
-	_function_detector_instance = load(ADDON_SRC + "function_detector.gd").new()
-	_class_detector_instance = load(ADDON_SRC + "class_detector.gd").new()
-	_cc_calc_instance = load(ADDON_SRC + "cc_calculator.gd").new()
-	_cog_calc_instance = load(ADDON_SRC + "cog_complexity_calculator.gd").new()
-	_confidence_calc_instance = load(ADDON_SRC + "confidence_calculator.gd").new()
+	_detector_instance = load(ADDON_SRC + "core/control_flow_detector.gd").new()
+	_function_detector_instance = load(ADDON_SRC + "core/function_detector.gd").new()
+	_class_detector_instance = load(ADDON_SRC + "core/class_detector.gd").new()
+	_cc_calc_instance = load(ADDON_SRC + "core/cc_calculator.gd").new()
+	_cog_calc_instance = load(ADDON_SRC + "core/cog_complexity_calculator.gd").new()
+	_confidence_calc_instance = load(ADDON_SRC + "core/confidence_calculator.gd").new()
 	_tools_ready = true
 
 func _analyze_file(file_path: String, config, profiling: bool = false):  # -> FileResult - nested class
@@ -178,7 +178,7 @@ func _analyze_file(file_path: String, config, profiling: bool = false):  # -> Fi
 		return result
 	
 	if tokenizer_errors.size() > 0:
-		# Partial tokenize success â€” keep going; confidence will reflect errors
+		# Partial tokenize success — keep going; confidence will reflect errors
 		result.errors = tokenizer_errors
 		_log_warning("TOKEN_PARSE_ERROR", "Tokenizer warnings for %s (%d)" % [file_path, tokenizer_errors.size()])
 	
@@ -397,7 +397,7 @@ func get_project_result():  # -> ProjectResult - nested class
 func _ensure_logger(config):
 	if logger != null:
 		return
-	logger = load(ADDON_SRC + "logger.gd").new()
+	logger = load(ADDON_SRC + "core/logger.gd").new()
 	if config != null and config.logging_config != null:
 		logger.configure(config.logging_config)
 
@@ -412,7 +412,7 @@ func _log_warning(code: String, message: String):
 	logger.log_with_code("warning", code, message)
 
 func _set_error_summary(file_results: Array):
-	var helper = load(ADDON_SRC + "error_summary.gd").new()
+	var helper = load(ADDON_SRC + "core/error_summary.gd").new()
 	var summary = helper.summarize(file_results, project_result.errors)
 	project_result.error_summary = summary.by_code
 	project_result.error_severity_summary = summary.by_severity

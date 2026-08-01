@@ -2,6 +2,12 @@
 
 This document tracks breaking changes by release.
 
+## 1.0.0
+
+- **Schema freeze**: JSON report `"version": "1.0"` and config keys documented in [SCHEMA.md](SCHEMA.md) are now a stable v1 contract.
+- Future breaking changes to report shape or listed config keys require Pride **PROUD 2.0.0**.
+- Shared analysis modules live under `addons/gdscript_complexity/src/core/` (load paths changed from `src/<module>.gd` to `src/core/<module>.gd`). External scripts that `load()` those paths must update.
+
 ## 0.2.0
 
 - CLI consumer entrypoint is now `cli/analyze_project.gd` (preferred). `tests/ci_test.gd` remains as a thin wrapper.

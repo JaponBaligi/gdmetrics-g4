@@ -49,14 +49,14 @@ func analyze_file(file_path: String) -> Dictionary:
 		result["error"] = "No tokens found in file"
 		return result
 
-	var detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
+	var detector = load("res://addons/gdscript_complexity/src/core/control_flow_detector.gd").new()
 	var control_flow_nodes = detector.detect_control_flow(tokens, version_adapter)
 	var detector_errors = detector.get_errors()
 	
 	if detector_errors.size() > 0:
 		result["errors"] = detector_errors
 
-	var cc_calc = load("res://addons/gdscript_complexity/src/cc_calculator.gd").new()
+	var cc_calc = load("res://addons/gdscript_complexity/src/core/cc_calculator.gd").new()
 	var cc = cc_calc.calculate_cc(control_flow_nodes)
 	var breakdown = cc_calc.get_breakdown()
 	

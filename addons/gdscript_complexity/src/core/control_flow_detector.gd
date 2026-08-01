@@ -1,5 +1,5 @@
-﻿extends Object
-class_name ControlFlowDetector
+extends Object
+# class_name ControlFlowDetector
 
 # Control flow detector 
 # Detects: if, elif, for, while, match/case, and logical operators
@@ -7,6 +7,7 @@ class_name ControlFlowDetector
 
 const ADDON_ROOT := "res://addons/gdscript_complexity"
 const SRC_ROOT := ADDON_ROOT + "/src"
+const CORE_ROOT := SRC_ROOT + "/core"
 
 class ControlFlowNode:
 	var type: String
@@ -41,7 +42,7 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 	if tokens.size() == 0:
 		return []
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	
 	var supports_match = true
 	if version_adapter != null:
@@ -205,7 +206,7 @@ func _get_line_indent(tokens: Array, token_index: int) -> int:
 	if token_index <= 0:
 		return 0
 	
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var target_line = tokens[token_index].line
 	var i = token_index - 1
 	
@@ -269,8 +270,8 @@ func _get_match_indent(stack: Array) -> int:
 	return -1
 
 func _is_match_statement(tokens: Array, match_index: int) -> bool:
-	# Reject method calls like `text.match(pattern)` â€” statement match has no `.` immediately before it
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	# Reject method calls like `text.match(pattern)` — statement match has no `.` immediately before it
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var i = match_index - 1
 	while i >= 0:
 		var t = tokens[i]
@@ -284,7 +285,7 @@ func _is_match_statement(tokens: Array, match_index: int) -> bool:
 
 func _is_ternary_if(tokens: Array, if_index: int) -> bool:
 	# Statement `if` is first non-ws token on its line; ternary has tokens before it
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var line = tokens[if_index].line
 	var i = if_index - 1
 	while i >= 0 and tokens[i].line == line:
@@ -294,11 +295,11 @@ func _is_ternary_if(tokens: Array, if_index: int) -> bool:
 	return false
 
 func _line_is_match_arm(tokens: Array, start_index: int) -> bool:
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var line = tokens[start_index].line
 	var paren_depth = 0
 	var i = start_index
-	# Skip leading statement keywords that cannot start an arm body header incorrectly â€”
+	# Skip leading statement keywords that cannot start an arm body header incorrectly —
 	# arms may start with var/_, numbers, strings, [, {, identifiers
 	while i < tokens.size() and tokens[i].line == line:
 		var token = tokens[i]
@@ -314,7 +315,7 @@ func _line_is_match_arm(tokens: Array, start_index: int) -> bool:
 	return false
 
 func _parse_match_arm_details(tokens: Array, start_index: int) -> Dictionary:
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var pattern_count = 1
 	var has_guard = false
 	var guard_mode = false
@@ -351,7 +352,7 @@ func _parse_case_details(tokens: Array, start_index: int) -> Dictionary:
 	return _parse_match_arm_details(tokens, start_index)
 
 func _is_anonymous_func(tokens: Array, func_index: int) -> bool:
-	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var TokenType = load(_tokenizer_script_path()).TokenType
 	var i = func_index + 1
 	while i < tokens.size():
 		var token = tokens[i]
@@ -375,3 +376,9 @@ func count_by_type(type: String) -> int:
 			count += 1
 	return count
 
+
+func _tokenizer_script_path() -> String:
+	var major = Engine.get_version_info().get("major", 0)
+	if major < 4:
+		return SRC_ROOT + "/gd3/tokenizer.gd"
+	return SRC_ROOT + "/tokenizer.gd"

@@ -223,7 +223,7 @@ func run_analysis(
 	print("Average CC: %.2f" % project_result.average_cc)
 	print("Average C-COG: %.2f" % project_result.average_cog)
 
-	var gate_helper = load("res://addons/gdscript_complexity/src/threshold_gate.gd").new()
+	var gate_helper = load("res://addons/gdscript_complexity/src/core/threshold_gate.gd").new()
 	var gate = gate_helper.evaluate(project_result, default_config)
 	gate_helper.print_summary(gate)
 
@@ -232,7 +232,7 @@ func run_analysis(
 		print("FAIL: %d function(s) exceeded threshold_fail" % gate["fail_count"])
 		exit_code = 1
 
-	var history = load("res://addons/gdscript_complexity/src/history_store.gd").new()
+	var history = load("res://addons/gdscript_complexity/src/core/history_store.gd").new()
 	var resolved_history = history.resolve_path(default_config, history_path)
 	var current_record = history.build_record(project_result, int(gate["fail_count"]))
 

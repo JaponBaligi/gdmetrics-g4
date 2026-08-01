@@ -1,5 +1,5 @@
 extends Object
-class_name CogComplexityCalculator
+# class_name CogComplexityCalculator
 
 # Cognitive Complexity calculator
 # Formula: C-COG = sum of (1 + depth) for each control flow structure

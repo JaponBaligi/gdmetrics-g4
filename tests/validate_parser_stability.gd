@@ -314,12 +314,12 @@ func test_indentation_ambiguity() -> bool:
 			var tokenizer = tokenizer_script.new()
 			var tokens = tokenizer.tokenize_file(temp_path)
 			
-			var func_detector_script = load(SRC_ROOT + "/function_detector.gd")
+			var func_detector_script = load(SRC_ROOT + "/core/function_detector.gd")
 			assert(func_detector_script != null, "Failed to load function_detector.gd")
 			var func_detector = func_detector_script.new()
 			var functions = func_detector.detect_functions(tokens)
 			
-			var class_detector_script = load(SRC_ROOT + "/class_detector.gd")
+			var class_detector_script = load(SRC_ROOT + "/core/class_detector.gd")
 			assert(class_detector_script != null, "Failed to load class_detector.gd")
 			var class_detector = class_detector_script.new()
 			var classes = class_detector.detect_classes(tokens)

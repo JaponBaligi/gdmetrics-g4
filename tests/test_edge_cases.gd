@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 const FIXTURE_DIR = "res://tests/fixtures/edge_cases/"
 func _init():
 	var adapter = load("res://addons/gdscript_complexity/version_adapter.gd").new()
@@ -36,15 +36,15 @@ func _check_one(cfg, adapter, gd_path: String, exp_path: String) -> bool:
 	var tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	var tokens = tokenizer.tokenize_file(gd_path)
 	var terr = tokenizer.get_errors()
-	var detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
+	var detector = load("res://addons/gdscript_complexity/src/core/control_flow_detector.gd").new()
 	var nodes = detector.detect_control_flow(tokens, adapter)
-	var funcs = load("res://addons/gdscript_complexity/src/function_detector.gd").new().detect_functions(tokens)
+	var funcs = load("res://addons/gdscript_complexity/src/core/function_detector.gd").new().detect_functions(tokens)
 	var count_logical = cfg.cc_config.get("count_logical_operators", true)
 	var cc = 0
 	var cog = 0
 	if tokens.size() > 0:
-		cc = load("res://addons/gdscript_complexity/src/cc_calculator.gd").new().calculate_cc(nodes, count_logical)
-		cog = load("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd").new().calculate_cog(nodes, funcs).total_cog
+		cc = load("res://addons/gdscript_complexity/src/core/cc_calculator.gd").new().calculate_cc(nodes, count_logical)
+		cog = load("res://addons/gdscript_complexity/src/core/cog_complexity_calculator.gd").new().calculate_cog(nodes, funcs).total_cog
 	var arms = 0
 	for n in nodes:
 		if n.type == "case":

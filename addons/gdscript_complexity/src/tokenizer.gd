@@ -1,4 +1,4 @@
-﻿extends Object
+extends Object
 
 
 # Tokenizer for GDScript (Godot 4.x)
@@ -218,7 +218,7 @@ func _tokenize_line_body(line: String, line_number: int, start_i: int, start_col
 				i += 1
 				column += 1
 			elif string_result.multiline:
-				# Godot 4 allows newlines inside regular "…" / '…' strings
+				# Godot 4 allows newlines inside regular "..." / '...' strings
 				in_triple_string = true
 				triple_string_quote = current_char
 				multiline_buffer = string_result.token.value
@@ -245,7 +245,7 @@ func _tokenize_line_body(line: String, line_number: int, start_i: int, start_col
 				column += 2
 				continue
 		
-		# StringName / NodePath literals: &"…"  ^"…"  @"…"
+		# StringName / NodePath literals: &"..."  ^"..."  @"..."
 		if (current_char == "&" or current_char == "^" or current_char == "@") and i + 1 < line.length() and (line[i + 1] == '"' or line[i + 1] == "'"):
 			var pref = current_char
 			var q = line[i + 1]
@@ -263,7 +263,7 @@ func _tokenize_line_body(line: String, line_number: int, start_i: int, start_col
 				column = column + pref.length() + str_res.token.value.length()
 				continue
 
-		# Raw strings: r"…" / r'…' / r"""…"""
+		# Raw strings: r"..." / r'...' / r"""..."""
 		if (current_char == "r" or current_char == "R") and i + 1 < line.length():
 			var nch = line[i + 1]
 			if nch == '"' or nch == "'":
@@ -738,7 +738,7 @@ func _track_brackets(op: String, line_num: int, col: int):
 
 func _ensure_error_codes():
 	if _error_codes == null:
-		_error_codes = load(SRC_ROOT + "/error_codes.gd").new()
+		_error_codes = load(SRC_ROOT + "/core/error_codes.gd").new()
 
 func _append_error(code: String, detail: String):
 	_ensure_error_codes()

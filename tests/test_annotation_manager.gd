@@ -27,6 +27,7 @@ func run_all_tests():
 	test_add_error_annotation_path()
 	test_fallback_when_api_unavailable()
 	test_clear_annotations_fallback()
+	test_annotate_threshold_fail_per_function()
 	
 	print("\n========================================")
 	print("Results: %d passed, %d failed" % [tests_passed, tests_failed])
@@ -70,3 +71,31 @@ func test_clear_annotations_fallback():
 	manager.has_annotation_support = false
 	manager.clear_annotations("res://test.gd")
 	assert_true(true, "clear_annotations handled without crash")
+
+func test_annotate_threshold_fail_per_function():
+	print("Testing annotate_file_results uses threshold_fail per function...")
+	var manager = _load_manager()
+	var editor = DummyEditor.new()
+	manager.script_editor = editor
+	manager.has_annotation_support = true
+	manager.annotation_api = "add_error_annotation"
+
+	var shim = _FileResultShim.new()
+	shim.success = true
+	shim.file_path = "res://player.gd"
+	shim.cc = 5
+	shim.cog = 5
+	shim.functions = [{"name": "hot_path", "start_line": 12, "end_line": 40}]
+	shim.per_function_cc = {"hot_path": 25}
+	shim.per_function_cog = {"hot_path": 35}
+	manager.annotate_file_results(shim, 20, 30, false)
+	assert_true(editor.add_error_calls == 2, "CC and C-COG fail annotations both emitted")
+
+class _FileResultShim:
+	var success: bool = false
+	var file_path: String = ""
+	var cc: int = 0
+	var cog: int = 0
+	var functions: Array = []
+	var per_function_cc: Dictionary = {}
+	var per_function_cog: Dictionary = {}

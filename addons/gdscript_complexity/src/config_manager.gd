@@ -88,7 +88,7 @@ var _error_codes = null
 
 func _init(config_file_path: String = ""):
 	config = Config.new()
-	_error_codes = load(SRC_ROOT + "/error_codes.gd").new()
+	_error_codes = load(SRC_ROOT + "/core/error_codes.gd").new()
 	var _file_helper_script = load(SRC_ROOT + "/gd4/file_helper.gd")
 	if _file_helper_script != null:
 		_file_helper = _file_helper_script.new()

@@ -32,6 +32,9 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 - `report.output_path`: JSON output path
 - `report.csv_output_path`: CSV output path
 - `report.history_path`: append-only JSONL history path (default `complexity_history.jsonl`)
+- `report.html_output_path`: HTML report path (default `res://complexity_report.html`)
+
+Stable report/config contract: [SCHEMA.md](SCHEMA.md) (`"version": "1.0"`).
 - `report.auto_export`: auto write after analysis
 - `report.annotate_editor`: enable/disable editor warnings
 - `performance.enable_caching`: caching on/off

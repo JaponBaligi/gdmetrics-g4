@@ -4,6 +4,7 @@ extends Object
 
 const ADDON_ROOT := "res://addons/gdscript_complexity"
 const SRC_ROOT := ADDON_ROOT + "/src"
+const CORE_ROOT := SRC_ROOT + "/core"
 
 const LEVEL_ERROR = "error"
 const LEVEL_WARNING = "warning"
@@ -80,14 +81,17 @@ func _append_file(message: String) -> void:
 func _ensure_file_helper():
 	if _file_helper != null:
 		return _file_helper
-	var helper_script = SRC_ROOT + "/gd4/file_helper.gd"  # Godot 4.x
+	var major = Engine.get_version_info().get("major", 0)
+	var helper_script = SRC_ROOT + "/gd4/file_helper.gd"
+	if major < 4:
+		helper_script = SRC_ROOT + "/gd3/file_helper.gd"
 	var helper_resource = load(helper_script)
 	if helper_resource != null:
 		_file_helper = helper_resource.new()
 	return _file_helper
 
 func _get_error_codes():
-	return load(SRC_ROOT + "/error_codes.gd").new()
+	return load(CORE_ROOT + "/error_codes.gd").new()
 
 func _get_timestamp() -> String:
 	var helper = _ensure_time_helper()
@@ -98,7 +102,10 @@ func _get_timestamp() -> String:
 func _ensure_time_helper():
 	if _time_helper != null:
 		return _time_helper
+	var major = Engine.get_version_info().get("major", 0)
 	_time_helper_path = SRC_ROOT + "/gd4/time_helper.gd"
+	if major < 4:
+		_time_helper_path = SRC_ROOT + "/gd3/time_helper.gd"
 	var helper_resource = load(_time_helper_path)
 	if helper_resource == null:
 		return null

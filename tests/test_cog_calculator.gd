@@ -11,9 +11,9 @@ var tests_passed = 0
 var tests_failed = 0
 
 func _init():
-	cog_calculator = load("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd").new()
-	control_flow_detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
-	function_detector = load("res://addons/gdscript_complexity/src/function_detector.gd").new()
+	cog_calculator = load("res://addons/gdscript_complexity/src/core/cog_complexity_calculator.gd").new()
+	control_flow_detector = load("res://addons/gdscript_complexity/src/core/control_flow_detector.gd").new()
+	function_detector = load("res://addons/gdscript_complexity/src/core/function_detector.gd").new()
 	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	
 	run_all_tests()

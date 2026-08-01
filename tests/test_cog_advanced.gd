@@ -9,8 +9,8 @@ func _initialize():
 	print("Testing Advanced C-COG Rules")
 	print(separator)
 	
-	var detector_script = load("res://addons/gdscript_complexity/src/control_flow_detector.gd")
-	var calc_script = load("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd")
+	var detector_script = load("res://addons/gdscript_complexity/src/core/control_flow_detector.gd")
+	var calc_script = load("res://addons/gdscript_complexity/src/core/cog_complexity_calculator.gd")
 	var node_class = detector_script.ControlFlowNode
 	
 	var nodes: Array = []

@@ -32,7 +32,7 @@ func _init():
 		print("")
 	
 	print("=== Control Flow Detection ===")
-	var detector = preload("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
+	var detector = preload("res://addons/gdscript_complexity/src/core/control_flow_detector.gd").new()
 	var nodes = detector.detect_control_flow(tokens)
 	print("Control flow nodes found: %d" % nodes.size())
 	print("")
@@ -53,7 +53,7 @@ func _init():
 	print("")
 	
 	print("=== Cyclomatic Complexity ===")
-	var cc_calc = preload("res://addons/gdscript_complexity/src/cc_calculator.gd").new()
+	var cc_calc = preload("res://addons/gdscript_complexity/src/core/cc_calculator.gd").new()
 	var cc = cc_calc.calculate_cc(nodes)
 	var breakdown = cc_calc.get_breakdown()
 	print("CC = %d" % cc)
@@ -71,7 +71,7 @@ func _init():
 	
 	print("")
 	print("=== Function Detection ===")
-	var func_detector = preload("res://addons/gdscript_complexity/src/function_detector.gd").new()
+	var func_detector = preload("res://addons/gdscript_complexity/src/core/function_detector.gd").new()
 	var functions = func_detector.detect_functions(tokens)
 	print("Functions found: %d" % functions.size())
 	for func_info in functions:
@@ -82,7 +82,7 @@ func _init():
 	
 	print("")
 	print("=== Cognitive Complexity (C-COG) ===")
-	var cog_calc = preload("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd").new()
+	var cog_calc = preload("res://addons/gdscript_complexity/src/core/cog_complexity_calculator.gd").new()
 	var cog_result = cog_calc.calculate_cog(nodes, functions)
 	print("Total C-COG = %d" % cog_result.total_cog)
 	print("Breakdown:")
@@ -102,7 +102,7 @@ func _init():
 	
 	print("")
 	print("=== Class Detection ===")
-	var class_detector = preload("res://addons/gdscript_complexity/src/class_detector.gd").new()
+	var class_detector = preload("res://addons/gdscript_complexity/src/core/class_detector.gd").new()
 	var classes = class_detector.detect_classes(tokens)
 	print("Classes found: %d" % classes.size())
 	for class_info in classes:
@@ -110,7 +110,7 @@ func _init():
 	
 	print("")
 	print("=== Confidence Score ===")
-	var confidence_calc = preload("res://addons/gdscript_complexity/src/confidence_calculator.gd").new()
+	var confidence_calc = preload("res://addons/gdscript_complexity/src/core/confidence_calculator.gd").new()
 	var confidence_result = confidence_calc.calculate_confidence(tokens, errors, "4.0")
 	print("Confidence Score: %.2f" % confidence_result.score)
 	print("Components:")

@@ -16,7 +16,7 @@ var last_project_result = null
 var logger = null
 
 func _enter_tree():
-	logger = load(ADDON_SRC + "logger.gd").new()
+	logger = load(ADDON_SRC + "core/logger.gd").new()
 	logger.log_message("info", "Plugin entering tree")
 	
 	godot_version = Engine.get_version_info()
@@ -128,17 +128,17 @@ func _exit_tree():
 func _unload_script_cache():
 	var paths = [
 		ADDON_SRC + "batch_analyzer.gd",
-		ADDON_SRC + "control_flow_detector.gd",
-		ADDON_SRC + "function_detector.gd",
-		ADDON_SRC + "class_detector.gd",
-		ADDON_SRC + "cc_calculator.gd",
-		ADDON_SRC + "cog_complexity_calculator.gd",
-		ADDON_SRC + "confidence_calculator.gd",
+		ADDON_SRC + "core/control_flow_detector.gd",
+		ADDON_SRC + "core/function_detector.gd",
+		ADDON_SRC + "core/class_detector.gd",
+		ADDON_SRC + "core/cc_calculator.gd",
+		ADDON_SRC + "core/cog_complexity_calculator.gd",
+		ADDON_SRC + "core/confidence_calculator.gd",
 		ADDON_SRC + "config_manager.gd",
 		ADDON_SRC + "cache_manager.gd",
-		ADDON_SRC + "logger.gd",
-		ADDON_SRC + "error_codes.gd",
-		ADDON_SRC + "error_summary.gd",
+		ADDON_SRC + "core/logger.gd",
+		ADDON_SRC + "core/error_codes.gd",
+		ADDON_SRC + "core/error_summary.gd",
 		ADDON_SRC + "gd4/file_helper.gd",
 		ADDON_SRC + "gd4/time_helper.gd",
 		"res://addons/gdscript_complexity/version_adapter.gd",
@@ -203,6 +203,9 @@ func _on_analyze_requested():
 	if dock_panel == null:
 		push_error("[Plugin] ERROR: dock_panel is null!")
 		return
+
+	if annotation_manager != null:
+		annotation_manager.clear_all_annotations()
 	
 	# Update UI first (safely)
 	dock_panel.clear_results()
@@ -279,9 +282,10 @@ func _add_file_result(file_result):
 	
 	if annotation_manager != null and config_manager != null:
 		var config = config_manager.get_config()
-		var cc_threshold = config.cc_config["threshold_warn"]
-		var cog_threshold = config.cog_config["threshold_warn"]
-		annotation_manager.annotate_file_results(file_result, cc_threshold, cog_threshold)
+		var cc_fail = int(config.cc_config.get("threshold_fail", 20))
+		var cog_fail = int(config.cog_config.get("threshold_fail", 30))
+		# clear_first=false: analysis start already cleared; avoid flicker per file
+		annotation_manager.annotate_file_results(file_result, cc_fail, cog_fail, false)
 
 func _on_analysis_complete(project_result):
 	if _VERBOSE_TRACE: print("[Plugin] _on_analysis_complete called")
@@ -315,8 +319,8 @@ func _finalize_analysis(project_result):
 func _append_history(project_result, config) -> void:
 	if project_result == null or config == null:
 		return
-	var history = load(ADDON_SRC + "history_store.gd").new()
-	var gate = load(ADDON_SRC + "threshold_gate.gd").new()
+	var history = load(ADDON_SRC + "core/history_store.gd").new()
+	var gate = load(ADDON_SRC + "core/threshold_gate.gd").new()
 	var gate_result = gate.evaluate(project_result, config)
 	var fail_count = int(gate_result.get("fail_count", 0))
 	if history.append_from_result(project_result, config, fail_count):

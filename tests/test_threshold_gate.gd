@@ -23,7 +23,7 @@ func run_test() -> int:
 		print("ERROR: expected successful analysis of nested_control_flow.gd")
 		return 1
 
-	var gate = load("res://addons/gdscript_complexity/src/threshold_gate.gd").new()
+	var gate = load("res://addons/gdscript_complexity/src/core/threshold_gate.gd").new()
 	var result = gate.evaluate(project_result, config)
 	gate.print_summary(result)
 

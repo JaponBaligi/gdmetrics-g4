@@ -1,4 +1,4 @@
-﻿# Confidence validation and tuning tool
+# Confidence validation and tuning tool
 # Run with: godot --headless --script tests/validate_confidence.gd -- [--apply] [--step 0.1] [--min-r2 0.7] [--metrics-out path]
 
 extends SceneTree
@@ -88,11 +88,11 @@ func _collect_scores(config, version_adapter) -> Array:
 	var discovery = load("res://addons/gdscript_complexity/src/gd4/file_discovery.gd").new()
 	var files = discovery.find_files(fixtures_path, ["res://**/*.gd"], [])
 	
-	var detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
-	var func_detector = load("res://addons/gdscript_complexity/src/function_detector.gd").new()
-	var cc_calc = load("res://addons/gdscript_complexity/src/cc_calculator.gd").new()
-	var cog_calc = load("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd").new()
-	var confidence_calc = load("res://addons/gdscript_complexity/src/confidence_calculator.gd").new()
+	var detector = load("res://addons/gdscript_complexity/src/core/control_flow_detector.gd").new()
+	var func_detector = load("res://addons/gdscript_complexity/src/core/function_detector.gd").new()
+	var cc_calc = load("res://addons/gdscript_complexity/src/core/cc_calculator.gd").new()
+	var cog_calc = load("res://addons/gdscript_complexity/src/core/cog_complexity_calculator.gd").new()
+	var confidence_calc = load("res://addons/gdscript_complexity/src/core/confidence_calculator.gd").new()
 	
 	for file_path in files:
 		var filename = file_path.get_file()

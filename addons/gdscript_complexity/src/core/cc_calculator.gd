@@ -1,5 +1,5 @@
 extends Object
-class_name CCCalculator
+# class_name CCCalculator
 
 #  Cyclomatic Complexity calculator
 # Formula: CC = 1 (base) + decisions
