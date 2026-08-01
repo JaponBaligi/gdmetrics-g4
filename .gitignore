@@ -87,3 +87,5 @@ after-conflict.md
 docs/PLAN.md
 docs/PROGRESS.md
 docs/CHANGELOG_TEMPLATE.md
+
+ci_report.csv
