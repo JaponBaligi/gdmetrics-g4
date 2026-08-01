@@ -17,7 +17,8 @@ Package contents:
 - `complexity_config.example.json`
 
 Version tagging:
-- Use `vMAJOR.MINOR.PATCH` (example: `v1.2.0`).
+- Use `vMAJOR.MINOR.PATCH` (example: `v0.1.3`).
+- Keep `addons/gdscript_complexity/plugin.cfg` `version=` in sync (without the `v` prefix).
 
-Installation:
-- See `docs/USER_GUIDE.md`.
+Release notes:
+- Update `release/NOTES.md` before tagging.

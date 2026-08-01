@@ -38,6 +38,9 @@ jobs:
       - name: Verify fixtures
         run: godot --headless --script tests/verify_cc_cog.gd
 
+      - name: Edge cases
+        run: godot --headless --script tests/test_edge_cases.gd
+
       - name: Validate confidence gate
         run: godot --headless --script tests/validate_confidence.gd -- \
           --min-r2 0.70 \
@@ -76,3 +79,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/gdmetrics-${{ github.ref_name }}.zip
+          body_path: release/NOTES.md
+          fail_on_unmatched_files: false

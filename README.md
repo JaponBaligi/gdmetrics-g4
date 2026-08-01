@@ -414,8 +414,8 @@ Confidence scores estimate parse reliability. Use `tests/validate_confidence.gd`
 - Untagged commits may contain experimental features
 
 **Current Release Status:**
-- **v0.1.1** is labeled as **early release / pre-stable**
-- Version 0.1.1 is ready for use but subject to change
+- **v0.1.3** is labeled as **early release / pre-stable**
+- Version 0.1.3 is ready for use but subject to change
 - **Breaking changes may occur before v1.0.0** (see [docs/BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md))
 - Configuration, CLI arguments, and output formats may change
 - Upgrades between 0.x versions may require manual adjustments
@@ -447,12 +447,13 @@ For detailed breaking changes, see the [BREAKING_CHANGES.md](docs/BREAKING_CHANG
 
 ## Roadmap
 
-### Current Release (v0.1.1)
+### Current Release (v0.1.3)
 - ✅ CC and C-COG metrics
 - ✅ JSON and CSV export
 - ✅ Godot 4.x support
 - ✅ Caching system
 - ✅ CLI integration
+- ✅ Match/`when`, lambdas, multiline strings, edge-case corpus gates
 
 ### Planned Features
 - 🔲 HTML report generation with charts
