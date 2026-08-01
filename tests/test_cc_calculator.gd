@@ -14,14 +14,7 @@ func _init():
 	cc_calculator = load("res://addons/gdscript_complexity/src/cc_calculator.gd").new()
 	control_flow_detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
 	function_detector = load("res://addons/gdscript_complexity/src/function_detector.gd").new()
-	
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	
-	if is_godot_3:
-		tokenizer = load("res://addons/gdscript_complexity/src/gd3/tokenizer.gd").new()
-	else:
-		tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
+	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	
 	run_all_tests()
 	quit(tests_failed)
@@ -92,13 +85,8 @@ func test_while_loop():
 
 func test_match_case():
 	print("Testing match/case...")
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	if is_godot_3:
-		print("SKIP: match/case not supported in Godot 3.x")
-		return
 	var result = analyze_file("res://tests/fixtures/match_statement.gd")
-	assert_true(result.cc == 2, "match adds +1 CC (total: 2)")
+	assert_true(result.cc == 5, "match + 3 arms add +4 CC (total: 5)")
 
 func test_logical_operators():
 	print("Testing logical operators...")

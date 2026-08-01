@@ -18,7 +18,7 @@ func _initialize():
 
 	var result = analyze_file(file_path)
 
-	print(to_json(result))
+	print(JSON.stringify(result))
 
 	if result.has("error"):
 		call_deferred("quit", 1)
@@ -36,8 +36,7 @@ func analyze_file(file_path: String) -> Dictionary:
 
 	var version_adapter = load("res://addons/gdscript_complexity/version_adapter.gd").new()
 	
-	var tokenizer_script = "res://addons/gdscript_complexity/src/gd3/tokenizer.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://addons/gdscript_complexity/src/tokenizer.gd"
-	var tokenizer = load(tokenizer_script).new()
+	var tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	var tokens = tokenizer.tokenize_file(file_path)
 	var tokenizer_errors = tokenizer.get_errors()
 	

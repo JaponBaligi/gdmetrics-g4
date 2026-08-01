@@ -12,14 +12,7 @@ var tests_failed = 0
 func _init():
 	confidence_calculator = load("res://addons/gdscript_complexity/src/confidence_calculator.gd").new()
 	version_adapter = load("res://addons/gdscript_complexity/version_adapter.gd").new()
-	
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	
-	if is_godot_3:
-		tokenizer = load("res://addons/gdscript_complexity/src/gd3/tokenizer.gd").new()
-	else:
-		tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
+	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	
 	run_all_tests()
 	quit(tests_failed)
@@ -88,10 +81,5 @@ func test_parse_error_weighting():
 
 func test_version_specific_caps():
 	print("Testing version-specific confidence caps...")
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
 	var result = analyze_file("res://tests/fixtures/simple_function.gd")
-	if is_godot_3:
-		assert_true(result.capped or result.score <= 0.90, "Godot 3.x confidence capped at 0.90")
-	else:
-		assert_true(result.score <= 1.0, "Godot 4.x confidence can reach 1.0")
+	assert_true(result.score <= 1.0, "Godot 4.x confidence can reach 1.0")

@@ -21,23 +21,21 @@ func run_verify() -> int:
 	_warnings.clear()
 	_api_differences.clear()
 	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	print("Godot version: %s" % ("3.x" if is_godot_3 else "4.x"))
+	print("Godot version: %d.%d.%d" % [version_info.get("major", 0), version_info.get("minor", 0), version_info.get("patch", 0)])
 	print("")
-	_check_dock_panel(is_godot_3)
-	_check_config_dialog(is_godot_3)
-	_check_annotation_manager(is_godot_3)
+	_check_dock_panel()
+	_check_config_dialog()
+	_check_annotation_manager()
 	_check_async_analyzer()
 	_print_summary()
 	return 0 if _passed else 1
 
-func _check_dock_panel(is_godot_3: bool):
+func _check_dock_panel():
 	print("Checking dock_panel.gd...")
-	var file_helper_script = "res://tests/file_helper_3.gd" if is_godot_3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
-	var path = "res://addons/gdscript_complexity/dock_panel.gd"
+	var file_helper = load("res://tests/file_helper_4.gd").new()
+	var path = "res://addons/gdscript_complexity/gd4/dock_panel.gd"
 	if not file_helper.file_exists(path):
-		_errors.append("dock_panel.gd not found")
+		_errors.append("gd4/dock_panel.gd not found")
 		_passed = false
 		return
 	var content = file_helper.read_file(path)
@@ -48,24 +46,17 @@ func _check_dock_panel(is_godot_3: bool):
 	if content.find("@tool") < 0:
 		_warnings.append("dock_panel.gd missing @tool annotation")
 	if content.find("set_anchors_and_offsets_preset") >= 0:
-		if is_godot_3:
-			_api_differences.append("dock_panel.gd uses set_anchors_and_offsets_preset (4.x API) - should use set_anchors_and_margins_preset in 3.x")
-		else:
-			print("  ✓ dock_panel.gd uses correct 4.x anchor API")
+		print("  ✓ dock_panel.gd uses correct 4.x anchor API")
 	if content.find("pressed.connect") >= 0:
-		if is_godot_3:
-			_api_differences.append("dock_panel.gd uses pressed.connect (4.x signal syntax) - should use pressed in 3.x")
-		else:
-			print("  ✓ dock_panel.gd uses correct 4.x signal syntax")
+		print("  ✓ dock_panel.gd uses correct 4.x signal syntax")
 	print("  ✓ dock_panel.gd structure valid")
 
-func _check_config_dialog(is_godot_3: bool):
+func _check_config_dialog():
 	print("Checking config_dialog.gd...")
-	var file_helper_script = "res://tests/file_helper_3.gd" if is_godot_3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
-	var path = "res://addons/gdscript_complexity/config_dialog.gd"
+	var file_helper = load("res://tests/file_helper_4.gd").new()
+	var path = "res://addons/gdscript_complexity/gd4/config_dialog.gd"
 	if not file_helper.file_exists(path):
-		_errors.append("config_dialog.gd not found")
+		_errors.append("gd4/config_dialog.gd not found")
 		_passed = false
 		return
 	var content = file_helper.read_file(path)
@@ -76,24 +67,17 @@ func _check_config_dialog(is_godot_3: bool):
 	if content.find("@tool") < 0:
 		_warnings.append("config_dialog.gd missing @tool annotation")
 	if content.find("set_anchors_and_offsets_preset") >= 0:
-		if is_godot_3:
-			_api_differences.append("config_dialog.gd uses set_anchors_and_offsets_preset (4.x API) - should use set_anchors_and_margins_preset in 3.x")
-		else:
-			print("  ✓ config_dialog.gd uses correct 4.x anchor API")
+		print("  ✓ config_dialog.gd uses correct 4.x anchor API")
 	if content.find("add_theme_constant_override") >= 0:
-		if is_godot_3:
-			_api_differences.append("config_dialog.gd uses add_theme_constant_override (4.x API) - may need add_constant_override in 3.x")
-		else:
-			print("  ✓ config_dialog.gd uses correct 4.x theme API")
+		print("  ✓ config_dialog.gd uses correct 4.x theme API")
 	print("  ✓ config_dialog.gd structure valid")
 
-func _check_annotation_manager(is_godot_3: bool):
+func _check_annotation_manager():
 	print("Checking annotation_manager.gd...")
-	var file_helper_script = "res://tests/file_helper_3.gd" if is_godot_3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
-	var path = "res://addons/gdscript_complexity/annotation_manager.gd"
+	var file_helper = load("res://tests/file_helper_4.gd").new()
+	var path = "res://addons/gdscript_complexity/gd4/annotation_manager.gd"
 	if not file_helper.file_exists(path):
-		_errors.append("annotation_manager.gd not found")
+		_errors.append("gd4/annotation_manager.gd not found")
 		_passed = false
 		return
 	var content = file_helper.read_file(path)
@@ -103,19 +87,18 @@ func _check_annotation_manager(is_godot_3: bool):
 		return
 	if content.find("@tool") < 0:
 		_warnings.append("annotation_manager.gd missing @tool annotation")
-	if content.find("add_error_annotation") >= 0 and content.find("set_error") >= 0:
-		print("  ✓ annotation_manager.gd supports both 3.x (set_error) and 4.x (add_error_annotation) APIs")
+	if content.find("add_error_annotation") >= 0:
+		print("  ✓ annotation_manager.gd uses add_error_annotation API")
 	else:
-		_warnings.append("annotation_manager.gd may not support both 3.x and 4.x annotation APIs")
+		_warnings.append("annotation_manager.gd may not use add_error_annotation")
 	print("  ✓ annotation_manager.gd structure valid")
 
 func _check_async_analyzer():
 	print("Checking async_analyzer.gd...")
-	var file_helper_script = "res://tests/file_helper_3.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
-	var path = "res://addons/gdscript_complexity/async_analyzer.gd"
+	var file_helper = load("res://tests/file_helper_4.gd").new()
+	var path = "res://addons/gdscript_complexity/gd4/async_analyzer.gd"
 	if not file_helper.file_exists(path):
-		_errors.append("async_analyzer.gd not found")
+		_errors.append("gd4/async_analyzer.gd not found")
 		_passed = false
 		return
 	var content = file_helper.read_file(path)
@@ -126,11 +109,7 @@ func _check_async_analyzer():
 	if content.find("@tool") < 0:
 		_warnings.append("async_analyzer.gd missing @tool annotation")
 	if content.find("files.is_empty()") >= 0:
-		var is_godot_3 = Engine.get_version_info().get("major", 0) == 3
-		if is_godot_3:
-			_api_differences.append("async_analyzer.gd uses is_empty() (4.x API) - should use size() == 0 in 3.x")
-		else:
-			print("  ✓ async_analyzer.gd uses correct 4.x array API")
+		print("  ✓ async_analyzer.gd uses correct 4.x array API")
 	print("  ✓ async_analyzer.gd structure valid")
 
 func _print_summary():
@@ -153,19 +132,15 @@ func _print_summary():
 	if _passed:
 		print("")
 		print("++ Plugin component verification PASSED")
-		if _api_differences.size() > 0:
-			print("")
-			print("Note: Some API differences detected. Plugin may need manual testing")
-			print("in Godot 3.5 editor to verify UI components work correctly.")
 		print("")
 		print("Manual testing checklist:")
-		print("  1. Load plugin in Godot 3.5 editor")
+		print("  1. Load plugin in Godot 4.x editor")
 		print("  2. Verify dock panel appears and UI renders correctly")
 		print("  3. Test 'Analyze Project' button - should start analysis")
 		print("  4. Test 'Config' button - should open configuration dialog")
 		print("  5. Test 'Cancel' button during analysis")
 		print("  6. Check Output panel for any errors")
-		print("  7. Verify annotation system (if available in 3.x)")
+		print("  7. Verify annotation system")
 	else:
 		print("")
 		print("xx Plugin component verification FAILED")

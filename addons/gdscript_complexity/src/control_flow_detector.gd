@@ -1,4 +1,4 @@
-extends Object
+﻿extends Object
 class_name ControlFlowDetector
 
 # Control flow detector 
@@ -41,7 +41,7 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 	if tokens.size() == 0:
 		return []
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	
 	var supports_match = true
 	if version_adapter != null:
@@ -54,6 +54,8 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 	var last_line = -1
 	var last_line_indent = 0
 	var pending_lambda_indent: int = -1
+	var match_arm_indent: int = -1
+	var match_arm_lines: Dictionary = {}  # line -> true, avoid double-count
 	
 	while i < tokens.size():
 		var token = tokens[i]
@@ -73,6 +75,8 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 					_update_indent_stack(indent_stack, last_line_indent)
 					_update_control_flow_stack(control_flow_stack, last_line_indent)
 					in_match_block = _is_match_active(control_flow_stack)
+					if not in_match_block:
+						match_arm_indent = -1
 					_update_lambda_stack(lambda_stack, last_line_indent)
 					if pending_lambda_indent >= 0 and indent > pending_lambda_indent:
 						lambda_stack.append(indent)
@@ -83,23 +87,51 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 		if token.type == TokenType.COMMENT:
 			i += 1
 			continue
+
+		# Detect real GDScript match arms (no `case` keyword): indent under match + `:` on line
+		if supports_match and in_match_block and not match_arm_lines.has(token.line):
+			var line_indent_arm = _get_line_indent(tokens, i)
+			var match_indent = _get_match_indent(control_flow_stack)
+			if match_indent >= 0 and line_indent_arm > match_indent:
+				if match_arm_indent < 0:
+					match_arm_indent = line_indent_arm
+				if line_indent_arm == match_arm_indent and _line_is_match_arm(tokens, i):
+					var details = _parse_match_arm_details(tokens, i)
+					var nesting_depth_arm = indent_stack.size()
+					var node_arm = ControlFlowNode.new("case", token.line, token.column, nesting_depth_arm)
+					node_arm.in_control_flow = control_flow_stack.size() > 0
+					node_arm.lambda_depth = lambda_stack.size()
+					node_arm.case_pattern_count = details.pattern_count
+					node_arm.case_has_guard = details.has_guard
+					detected_nodes.append(node_arm)
+					match_arm_lines[token.line] = true
+					control_flow_stack.append({"indent": line_indent_arm, "type": "case"})
 		
 		if token.type == TokenType.KEYWORD:
 			var line_indent = _get_line_indent(tokens, i)
-			_update_indent_stack(indent_stack, line_indent)
-			_update_control_flow_stack(control_flow_stack, line_indent)
-			in_match_block = _is_match_active(control_flow_stack)
-			_update_lambda_stack(lambda_stack, line_indent)
+			# Only structural keywords may mutate indent/control-flow stacks.
+			# Mid-line keywords like `in`/`as` must not pop a just-opened `for`/`if`.
+			var structural = token.value in ["if", "elif", "for", "while", "match", "func"]
+			if structural:
+				_update_indent_stack(indent_stack, line_indent)
+				_update_control_flow_stack(control_flow_stack, line_indent)
+				in_match_block = _is_match_active(control_flow_stack)
+				if not in_match_block:
+					match_arm_indent = -1
+				_update_lambda_stack(lambda_stack, line_indent)
 			var nesting_depth = indent_stack.size()
 			var in_control_flow = control_flow_stack.size() > 0
 			var lambda_depth = lambda_stack.size()
 			
 			if token.value == "if":
-				var node = ControlFlowNode.new("if", token.line, token.column, nesting_depth)
+				var is_ternary = _is_ternary_if(tokens, i)
+				var node_type = "ternary" if is_ternary else "if"
+				var node = ControlFlowNode.new(node_type, token.line, token.column, nesting_depth)
 				node.in_control_flow = in_control_flow
 				node.lambda_depth = lambda_depth
 				detected_nodes.append(node)
-				control_flow_stack.append({"indent": line_indent, "type": "if"})
+				if not is_ternary:
+					control_flow_stack.append({"indent": line_indent, "type": "if"})
 			elif token.value == "elif":
 				var node = ControlFlowNode.new("elif", token.line, token.column, nesting_depth)
 				node.in_control_flow = in_control_flow
@@ -118,23 +150,14 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 				node.lambda_depth = lambda_depth
 				detected_nodes.append(node)
 				control_flow_stack.append({"indent": line_indent, "type": "while"})
-			elif token.value == "match" and supports_match:
+			elif token.value == "match" and supports_match and _is_match_statement(tokens, i):
 				var node = ControlFlowNode.new("match", token.line, token.column, nesting_depth)
 				node.in_control_flow = in_control_flow
 				node.lambda_depth = lambda_depth
 				detected_nodes.append(node)
 				in_match_block = true
+				match_arm_indent = -1
 				control_flow_stack.append({"indent": line_indent, "type": "match"})
-			elif token.value == "case" and supports_match:
-				if in_match_block:
-					var details = _parse_case_details(tokens, i)
-					var node = ControlFlowNode.new("case", token.line, token.column, nesting_depth)
-					node.in_control_flow = in_control_flow
-					node.lambda_depth = lambda_depth
-					node.case_pattern_count = details.pattern_count
-					node.case_has_guard = details.has_guard
-					detected_nodes.append(node)
-					control_flow_stack.append({"indent": line_indent, "type": "case"})
 			elif token.value == "and":
 				var node = ControlFlowNode.new("and", token.line, token.column, nesting_depth)
 				node.in_control_flow = in_control_flow
@@ -163,10 +186,16 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 					node.lambda_depth = lambda_depth
 					detected_nodes.append(node)
 					pending_lambda_indent = line_indent
-		
-		if token.type == TokenType.OPERATOR and token.value == ":":
-			if in_match_block:
-				pass
+
+		# C-style logical operators (counted when config enables it in CC calculator)
+		if token.type == TokenType.OPERATOR and (token.value == "&&" or token.value == "||"):
+			var line_indent_op = _get_line_indent(tokens, i)
+			var nesting_depth_op = indent_stack.size()
+			var op_type = "and" if token.value == "&&" else "or"
+			var node_op = ControlFlowNode.new(op_type, token.line, token.column, nesting_depth_op)
+			node_op.in_control_flow = control_flow_stack.size() > 0
+			node_op.lambda_depth = lambda_stack.size()
+			detected_nodes.append(node_op)
 		
 		i += 1
 	
@@ -176,7 +205,7 @@ func _get_line_indent(tokens: Array, token_index: int) -> int:
 	if token_index <= 0:
 		return 0
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var target_line = tokens[token_index].line
 	var i = token_index - 1
 	
@@ -233,20 +262,71 @@ func _is_match_active(stack: Array) -> bool:
 			return true
 	return false
 
-func _parse_case_details(tokens: Array, start_index: int) -> Dictionary:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+func _get_match_indent(stack: Array) -> int:
+	for idx in range(stack.size() - 1, -1, -1):
+		if stack[idx].get("type", "") == "match":
+			return int(stack[idx].get("indent", 0))
+	return -1
+
+func _is_match_statement(tokens: Array, match_index: int) -> bool:
+	# Reject method calls like `text.match(pattern)` â€” statement match has no `.` immediately before it
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var i = match_index - 1
+	while i >= 0:
+		var t = tokens[i]
+		if t.type == TokenType.WHITESPACE or t.type == TokenType.COMMENT:
+			i -= 1
+			continue
+		if t.type == TokenType.OPERATOR and t.value == ".":
+			return false
+		return true
+	return true
+
+func _is_ternary_if(tokens: Array, if_index: int) -> bool:
+	# Statement `if` is first non-ws token on its line; ternary has tokens before it
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var line = tokens[if_index].line
+	var i = if_index - 1
+	while i >= 0 and tokens[i].line == line:
+		if tokens[i].type != TokenType.WHITESPACE and tokens[i].type != TokenType.COMMENT:
+			return true
+		i -= 1
+	return false
+
+func _line_is_match_arm(tokens: Array, start_index: int) -> bool:
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
+	var line = tokens[start_index].line
+	var paren_depth = 0
+	var i = start_index
+	# Skip leading statement keywords that cannot start an arm body header incorrectly â€”
+	# arms may start with var/_, numbers, strings, [, {, identifiers
+	while i < tokens.size() and tokens[i].line == line:
+		var token = tokens[i]
+		if token.type == TokenType.OPERATOR:
+			if token.value == "(" or token.value == "[" or token.value == "{":
+				paren_depth += 1
+			elif token.value == ")" or token.value == "]" or token.value == "}":
+				if paren_depth > 0:
+					paren_depth -= 1
+			elif token.value == ":" and paren_depth == 0:
+				return true
+		i += 1
+	return false
+
+func _parse_match_arm_details(tokens: Array, start_index: int) -> Dictionary:
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var pattern_count = 1
 	var has_guard = false
 	var guard_mode = false
 	var paren_depth = 0
 	var line = tokens[start_index].line
-	var i = start_index + 1
+	var i = start_index
 	
 	while i < tokens.size():
 		var token = tokens[i]
 		if token.line != line:
 			break
-		if token.type == TokenType.OPERATOR and token.value == ":":
+		if token.type == TokenType.OPERATOR and token.value == ":" and paren_depth == 0:
 			break
 		if token.type == TokenType.OPERATOR:
 			if token.value == "(" or token.value == "[" or token.value == "{":
@@ -256,9 +336,10 @@ func _parse_case_details(tokens: Array, start_index: int) -> Dictionary:
 					paren_depth -= 1
 			elif token.value == "," and paren_depth == 0 and not guard_mode:
 				pattern_count += 1
-		elif token.type == TokenType.KEYWORD and token.value == "if" and paren_depth == 0:
-			has_guard = true
-			guard_mode = true
+		elif token.type == TokenType.KEYWORD and paren_depth == 0:
+			if token.value == "when" or token.value == "if":
+				has_guard = true
+				guard_mode = true
 		i += 1
 	
 	return {
@@ -266,8 +347,11 @@ func _parse_case_details(tokens: Array, start_index: int) -> Dictionary:
 		"has_guard": has_guard
 	}
 
+func _parse_case_details(tokens: Array, start_index: int) -> Dictionary:
+	return _parse_match_arm_details(tokens, start_index)
+
 func _is_anonymous_func(tokens: Array, func_index: int) -> bool:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = func_index + 1
 	while i < tokens.size():
 		var token = tokens[i]
@@ -290,3 +374,4 @@ func count_by_type(type: String) -> int:
 		if node.type == type:
 			count += 1
 	return count
+

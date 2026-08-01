@@ -2,7 +2,6 @@ extends Object
 class_name CacheManager
 
 # Content-based incremental analysis cache
-# Works with both Godot 3.x and 4.x
 
 const ADDON_ROOT := "res://addons/gdscript_complexity"
 const SRC_ROOT := ADDON_ROOT + "/src"

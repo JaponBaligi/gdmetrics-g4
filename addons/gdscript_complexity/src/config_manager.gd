@@ -23,6 +23,7 @@ class Config:
 			"res://.git/**",
 			"res://.godot/**",
 			"res://node_modules/**",
+			"res://addons/gdscript_complexity/**",
 			"res://addons/**/test/**",
 			"res://tests/**"
 		]
@@ -70,7 +71,6 @@ var config: Config
 var config_path: String = ""
 var errors: Array = []
 var _file_helper = null
-var _is_godot_3: bool = false
 var _error_codes = null
 
 func _init(config_file_path: String = ""):

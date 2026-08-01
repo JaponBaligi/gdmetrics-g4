@@ -106,16 +106,8 @@ func run_analysis(project_path: String, output_path: String, csv_output_path: St
 		print("ERROR: No files successfully analyzed")
 		return 1
 	
-	var report_gen_script = "res://addons/gdscript_complexity/src/gd3/report_generator.gd" if version_adapter.is_godot_3 else "res://addons/gdscript_complexity/src/gd4/report_generator.gd"
-	var report_gen = load(report_gen_script).new()
+	var report_gen = load("res://addons/gdscript_complexity/src/gd4/report_generator.gd").new()
 	var report = report_gen.generate_report(project_result, default_config)
-	
-	# Godot 3.5 can crash occasionally. Write to user:// first so the report survives.
-	if version_adapter.is_godot_3:
-		var fallback = "user://ci_report_fallback.json"
-		if report_gen.write_report(report, fallback):
-			print("Report fallback (if 3.5 crashes): %s" % fallback)
-			print("  -> %s" % OS.get_user_data_dir())
 	
 	if not report_gen.write_report(report, output_path):
 		print("ERROR: Failed to write report")

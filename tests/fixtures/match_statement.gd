@@ -1,7 +1,6 @@
-# Match statement (Godot 4.x only) - CC: 2, C-COG: 5
-# Expected: CC = 1 (base) + 1 (match) = 2
-# Expected: C-COG = 2 (match depth 1) + 1 (return) + 1 (return) + 1 (return) = 5
-# Note: Patterns are not counted as "case" tokens in this fixture
+# Match statement - CC: 5, C-COG: 8
+# Expected: CC = 1 (base) + 1 (match) + 3 (arms) = 5
+# Expected: C-COG = 2 (match depth 1) + 3 (arms) + 3 (returns in control flow) = 8
 
 func handle_state(state):
 	match state:

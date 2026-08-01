@@ -1,4 +1,4 @@
-# Verification script for CC/C-COG values against fixtures
+﻿# Verification script for CC/C-COG values against fixtures
 # Run with: godot --headless --script tests/verify_cc_cog.gd
 
 extends SceneTree
@@ -20,8 +20,8 @@ var expected_values = {
 	"for_loop.gd": {"cc": 2, "cog": 2},
 	"while_loop.gd": {"cc": 2, "cog": 2},
 	"nested_control_flow.gd": {"cc": 4, "cog": 9},
-	"match_statement.gd": {"cc": 2, "cog": 5},
-	"logical_operators.gd": {"cc": 5, "cog": 8},
+	"match_statement.gd": {"cc": 5, "cog": 8},
+	"logical_operators.gd": {"cc": 5, "cog": 10},
 	"class_with_inheritance.gd": {"cc": 2, "cog": 2},
 	"empty_file.gd": {"cc": 1, "cog": 0},
 	"with_yield.gd": {"cc": 2, "cog": 2},
@@ -61,9 +61,6 @@ func run_verification():
 	
 	for file_result in project_result.file_results:
 		var filename = file_result.file_path.get_file()
-		if version_adapter.is_godot_3 and filename == "match_statement.gd":
-			print("SKIP: %s (match not supported in Godot 3.x)" % filename)
-			continue
 		if expected_values.has(filename):
 			var expected = expected_values[filename]
 			var actual_cc = file_result.cc
@@ -86,17 +83,7 @@ func run_verification():
 		else:
 			print("SKIP: %s (no expected values)" % filename)
 	
-	# Check confidence cap for Godot 3.x
-	if version_adapter.is_godot_3:
-		print("\nChecking Godot 3.x confidence cap...")
-		for file_result in project_result.file_results:
-			if file_result.confidence > 0.90:
-				tests_failed += 1
-				print("FAIL: %s confidence (%f) exceeds 0.90 cap" % [file_result.file_path.get_file(), file_result.confidence])
-			else:
-				tests_passed += 1
-				print("PASS: %s confidence (%f) <= 0.90" % [file_result.file_path.get_file(), file_result.confidence])
-	
 	print("\n========================================")
 	print("Results: %d passed, %d failed" % [tests_passed, tests_failed])
 	print("========================================")
+

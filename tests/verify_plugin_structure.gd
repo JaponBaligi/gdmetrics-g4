@@ -19,8 +19,7 @@ func run_verify() -> int:
 	_errors.clear()
 	_warnings.clear()
 	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	print("Godot version: %s" % ("3.x" if is_godot_3 else "4.x"))
+	print("Godot version: %d.%d.%d" % [version_info.get("major", 0), version_info.get("minor", 0), version_info.get("patch", 0)])
 	print("")
 	_check_plugin_cfg()
 	_check_plugin_script()
@@ -31,8 +30,7 @@ func run_verify() -> int:
 func _check_plugin_cfg():
 	print("Checking plugin.cfg...")
 	var cfg_path = "res://addons/gdscript_complexity/plugin.cfg"
-	var file_helper_script = "res://tests/file_helper_3.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
+	var file_helper = load("res://tests/file_helper_4.gd").new()
 	if not file_helper.file_exists(cfg_path):
 		_errors.append("plugin.cfg not found at %s" % cfg_path)
 		_passed = false
@@ -55,8 +53,7 @@ func _check_plugin_cfg():
 func _check_plugin_script():
 	print("Checking plugin.gd...")
 	var plugin_path = "res://addons/gdscript_complexity/plugin.gd"
-	var file_helper_script = "res://tests/file_helper_3.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
+	var file_helper = load("res://tests/file_helper_4.gd").new()
 	if not file_helper.file_exists(plugin_path):
 		_errors.append("plugin.gd not found")
 		_passed = false
@@ -96,18 +93,14 @@ func _check_version_adapter():
 		_errors.append("version_adapter missing is_supported_version()")
 		_passed = false
 		return
-	if not adapter.is_supported_version():
-		_warnings.append("Current Godot version not marked as supported by version_adapter")
+	if not adapter.is_godot_4:
+		_errors.append("version_adapter.is_godot_4 should be true on Godot 4.x")
+		_passed = false
+	elif not adapter.is_supported_version():
+		_errors.append("version_adapter.is_supported_version() should be true on Godot 4.x")
+		_passed = false
 	else:
-		print("  ✓ version_adapter supports current Godot version")
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	if is_godot_3:
-		if not adapter.is_godot_3:
-			_errors.append("version_adapter.is_godot_3 should be true on 3.x")
-			_passed = false
-		else:
-			print("  ✓ version_adapter correctly detects Godot 3.x")
+		print("  ✓ version_adapter detects Godot 4.x and marks it supported")
 	adapter = null
 
 func _print_summary():
@@ -127,7 +120,7 @@ func _print_summary():
 		print("++ Plugin structure verification PASSED")
 		print("")
 		print("Manual steps to load plugin in editor:")
-		print("  1. Open Godot 3.5 editor")
+		print("  1. Open Godot 4.x editor")
 		print("  2. Open this project (project.godot)")
 		print("  3. Go to Project > Project Settings > Plugins")
 		print("  4. Enable 'GDScript Complexity Analyzer'")

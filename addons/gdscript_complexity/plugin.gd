@@ -1,5 +1,6 @@
-@tool
+﻿@tool
 extends EditorPlugin
+const _VERBOSE_TRACE := false
 
 const ADDON_ROOT := "res://addons/gdscript_complexity/"
 const ADDON_SRC := ADDON_ROOT + "src/"
@@ -11,7 +12,6 @@ var annotation_manager = null  # AnnotationManager - loaded dynamically based on
 var config_dialog = null  # ConfigDialog - loaded dynamically based on version
 var version_adapter = null  # VersionAdapter - loaded dynamically
 var godot_version: Dictionary = {}
-var process_timer: Timer = null  # Timer for deferred processing in Godot 3.x
 var last_project_result = null
 var logger = null
 
@@ -31,9 +31,6 @@ func _enter_tree():
 		return
 	
 	logger.log_message("info", "Version adapter initialized: %s" % version_adapter.get_version_string())
-	
-	if godot_version["major"] < 4:
-		logger.log_message("info", "Running in Godot 3.x mode (best-effort support)")
 	
 	config_manager = load(ADDON_SRC + "config_manager.gd").new()
 	
@@ -98,16 +95,7 @@ func _enter_tree():
 	else:
 		logger.log_with_code("error", "ANALYSIS_FAILED", "_on_open_requested method not found")
 	
-	# Create timer for deferred processing in Godot 3.x
-	if version_adapter.is_godot_3:
-		process_timer = Timer.new()
-		process_timer.wait_time = 0.01  # Process every 10ms
-		process_timer.one_shot = true
-		process_timer.autostart = false
-		add_child(process_timer)
-		process_timer.connect("timeout", Callable(self, "_process_next_batch_deferred"))
-	
-		logger.log_message("info", "Plugin initialized successfully")
+	logger.log_message("info", "Plugin initialized successfully")
 
 func _exit_tree():
 	if logger != null:
@@ -124,10 +112,6 @@ func _exit_tree():
 	if config_dialog != null:
 		config_dialog.queue_free()
 		config_dialog = null
-	
-	if process_timer != null:
-		process_timer.queue_free()
-		process_timer = null
 	
 	async_analyzer = null
 	annotation_manager = null
@@ -201,7 +185,7 @@ func get_version_adapter():
 	return version_adapter
 
 func _on_analyze_requested():
-	print("[Plugin] _on_analyze_requested called")
+	if _VERBOSE_TRACE: print("[Plugin] _on_analyze_requested called")
 	
 	# Wrap everything in defensive checks
 	if async_analyzer == null:
@@ -209,10 +193,10 @@ func _on_analyze_requested():
 		return
 	
 	if async_analyzer.is_analysis_running():
-		print("[Plugin] Analysis already running, ignoring request")
+		if _VERBOSE_TRACE: print("[Plugin] Analysis already running, ignoring request")
 		return
 	
-	print("[Plugin] Starting analysis...")
+	if _VERBOSE_TRACE: print("[Plugin] Starting analysis...")
 	
 	var project_path = "res://"
 	
@@ -240,35 +224,21 @@ func _on_analyze_requested():
 		push_error("[Plugin] ERROR: config is null!")
 		return
 	
-	print("[Plugin] Calling async_analyzer.start_analysis...")
-	
-	# Use call_deferred to start analysis on next frame to prevent immediate crash
-	var is_godot_3 = godot_version["major"] == 3
-	if is_godot_3:
-		print("[Plugin] Using Godot 3.x path with plugin reference (deferred)")
-		call_deferred("_start_analysis_deferred", project_path, config, version_adapter, self)
-	else:
-		print("[Plugin] Using Godot 4.x path (deferred)")
-		call_deferred("_start_analysis_deferred", project_path, config, version_adapter, null)
-	
-	print("[Plugin] Deferred call scheduled")
+	if _VERBOSE_TRACE: print("[Plugin] Calling async_analyzer.start_analysis...")
+	if _VERBOSE_TRACE: print("[Plugin] Using Godot 4.x path (deferred)")
+	call_deferred("_start_analysis_deferred", project_path, config, version_adapter)
+	if _VERBOSE_TRACE: print("[Plugin] Deferred call scheduled")
 
-func _start_analysis_deferred(project_path: String, config, adapter, plugin: Node):
-	print("[Plugin] _start_analysis_deferred called")
+func _start_analysis_deferred(project_path: String, config, adapter):
+	if _VERBOSE_TRACE: print("[Plugin] _start_analysis_deferred called")
 	
 	if async_analyzer == null:
 		push_error("[Plugin] ERROR: async_analyzer is null in deferred call!")
 		return
 	
-	var is_godot_3 = godot_version["major"] == 3
-	if is_godot_3:
-		print("[Plugin] Calling start_analysis with plugin reference")
-		async_analyzer.start_analysis(project_path, config, adapter, plugin)
-	else:
-		print("[Plugin] Calling start_analysis without plugin reference")
-		async_analyzer.start_analysis(project_path, config, adapter)
-	
-	print("[Plugin] start_analysis call completed")
+	if _VERBOSE_TRACE: print("[Plugin] Calling start_analysis without plugin reference")
+	async_analyzer.start_analysis(project_path, config, adapter)
+	if _VERBOSE_TRACE: print("[Plugin] start_analysis call completed")
 
 func _on_progress_updated(current: int, total: int, file_path: String):
 	call_deferred("_update_progress", current, total, file_path)
@@ -305,11 +275,11 @@ func _add_file_result(file_result):
 		annotation_manager.annotate_file_results(file_result, cc_threshold, cog_threshold)
 
 func _on_analysis_complete(project_result):
-	print("[Plugin] _on_analysis_complete called")
+	if _VERBOSE_TRACE: print("[Plugin] _on_analysis_complete called")
 	call_deferred("_finalize_analysis", project_result)
 
 func _finalize_analysis(project_result):
-	print("[Plugin] _finalize_analysis called")
+	if _VERBOSE_TRACE: print("[Plugin] _finalize_analysis called")
 	last_project_result = project_result
 	if dock_panel != null:
 		var status_msg = "Analysis complete: %d files, CC: %d, C-COG: %d" % [
@@ -317,13 +287,13 @@ func _finalize_analysis(project_result):
 			project_result.total_cc,
 			project_result.total_cog
 		]
-		print("[Plugin] Setting status: %s" % status_msg)
+		if _VERBOSE_TRACE: print("[Plugin] Setting status: %s" % status_msg)
 		dock_panel.set_status(status_msg)
 		dock_panel.set_progress(project_result.total_files, project_result.total_files)
 		dock_panel.show_progress(false)
 		dock_panel.set_analyze_button_enabled(true)
 		dock_panel.set_cancel_button_enabled(false)
-		print("[Plugin] Analysis finalized successfully")
+		if _VERBOSE_TRACE: print("[Plugin] Analysis finalized successfully")
 	
 	if config_manager != null:
 		var config = config_manager.get_config()
@@ -436,37 +406,30 @@ func _auto_export_reports(project_result):
 			dock_panel.set_status("Auto export complete")
 
 func _on_process_next_batch_requested():
-	# Handle deferred processing for Godot 3.x using Timer
-	# This is more reliable than call_deferred for Reference classes
-	print("[Plugin] _on_process_next_batch_requested received")
+	if _VERBOSE_TRACE: print("[Plugin] _on_process_next_batch_requested received")
 	
 	if async_analyzer == null:
 		push_error("[Plugin] ERROR: async_analyzer is null in _on_process_next_batch_requested!")
 		return
 	
 	if not async_analyzer.is_analysis_running():
-		print("[Plugin] WARNING: Analyzer not running, ignoring request")
+		if _VERBOSE_TRACE: print("[Plugin] WARNING: Analyzer not running, ignoring request")
 		return
 	
-	if process_timer != null:
-		print("[Plugin] Starting timer for deferred processing")
-		process_timer.start()
-	else:
-		print("[Plugin] WARNING: process_timer is null, using call_deferred fallback")
-		# Fallback to call_deferred if timer not available
-		call_deferred("_process_next_batch_deferred")
+	call_deferred("_process_next_batch_deferred")
 
 func _process_next_batch_deferred():
-	print("[Plugin] _process_next_batch_deferred called")
+	if _VERBOSE_TRACE: print("[Plugin] _process_next_batch_deferred called")
 	
 	if async_analyzer == null:
 		push_error("[Plugin] ERROR: async_analyzer is null in _process_next_batch_deferred!")
 		return
 	
 	if async_analyzer.is_analysis_running():
-		print("[Plugin] Calling async_analyzer._process_next_batch()")
+		if _VERBOSE_TRACE: print("[Plugin] Calling async_analyzer._process_next_batch()")
 		async_analyzer._process_next_batch()
-		print("[Plugin] _process_next_batch call completed")
+		if _VERBOSE_TRACE: print("[Plugin] _process_next_batch call completed")
 	else:
-		print("[Plugin] WARNING: Analyzer not running in _process_next_batch_deferred")
+		if _VERBOSE_TRACE: print("[Plugin] WARNING: Analyzer not running in _process_next_batch_deferred")
+
 

@@ -1,4 +1,6 @@
-extends Object
+﻿extends Object
+# class_name BatchAnalyzer  # Commented out to avoid parse-time cascade
+
 # Batch analyzer
 # processes multiple files and aggregates results
 
@@ -17,6 +19,11 @@ class FileResult:
 	var cog_breakdown: Dictionary = {}
 	var per_function_cc: Dictionary = {}
 	var per_function_cog: Dictionary = {}
+	var max_nesting_depth: int = 0
+	var match_arm_count: int = 0
+	var lambda_count: int = 0
+	var loc_code: int = 0
+	var max_params: int = 0
 
 class ProjectResult:
 	var total_files: int = 0
@@ -36,7 +43,7 @@ class ProjectResult:
 	var total_errors: int = 0
 	var performance: Dictionary = {}
 
-var project_result = null
+var project_result = null  # ProjectResult - nested class
 var version_adapter = null
 var cache_manager = null
 var logger = null
@@ -52,7 +59,7 @@ var _confidence_calc_instance = null
 var _time_helper = null
 var _time_helper_path: String = ""
 
-func analyze_project(root_path: String, config, adapter = null):
+func analyze_project(root_path: String, config, adapter = null):  # -> ProjectResult - nested class
 	project_result = ProjectResult.new()
 	version_adapter = adapter
 	_error_codes = load(ADDON_SRC + "error_codes.gd").new()
@@ -126,9 +133,7 @@ func analyze_project(root_path: String, config, adapter = null):
 	return project_result
 
 func _get_tokenizer_script() -> String:
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	return (ADDON_SRC + "gd3/tokenizer.gd") if is_godot_3 else (ADDON_SRC + "tokenizer.gd")
+	return ADDON_SRC + "tokenizer.gd"
 
 func _ensure_tools():
 	if _tools_ready:
@@ -142,7 +147,7 @@ func _ensure_tools():
 	_confidence_calc_instance = load(ADDON_SRC + "confidence_calculator.gd").new()
 	_tools_ready = true
 
-func _analyze_file(file_path: String, config, profiling: bool = false):
+func _analyze_file(file_path: String, config, profiling: bool = false):  # -> FileResult - nested class
 	var result = FileResult.new()
 	result.file_path = file_path
 	_ensure_tools()
@@ -163,7 +168,7 @@ func _analyze_file(file_path: String, config, profiling: bool = false):
 		_accumulate_perf("tokenize_ms", _now_msec() - t0)
 	var tokenizer_errors = tokenizer.get_errors()
 	
-	if tokenizer_errors.size() > 0:
+	if tokenizer_errors.size() > 0 and tokens.size() == 0:
 		result.errors = tokenizer_errors
 		result.success = false
 		_log_error("TOKEN_PARSE_ERROR", "Tokenization failed for %s" % file_path)
@@ -172,11 +177,18 @@ func _analyze_file(file_path: String, config, profiling: bool = false):
 			cache_manager.store_result(file_path, config, result)
 		return result
 	
+	if tokenizer_errors.size() > 0:
+		# Partial tokenize success â€” keep going; confidence will reflect errors
+		result.errors = tokenizer_errors
+		_log_warning("TOKEN_PARSE_ERROR", "Tokenizer warnings for %s (%d)" % [file_path, tokenizer_errors.size()])
+	
 	if tokens.size() == 0:
-		result.errors.append(_error_codes.format("NO_TOKENS_FOUND", "No tokens found"))
-		result.success = false
-		_log_error("NO_TOKENS_FOUND", "No tokens found in %s" % file_path)
-		# Store failed result in cache
+		# Empty / whitespace-only file is a successful zero-complexity analysis
+		result.success = true
+		result.cc = 0
+		result.cog = 0
+		result.confidence = version_adapter.get_confidence_cap() if version_adapter != null else 1.0
+		result.loc_code = 0
 		if cache_manager != null:
 			cache_manager.store_result(file_path, config, result)
 		return result
@@ -199,7 +211,10 @@ func _analyze_file(file_path: String, config, profiling: bool = false):
 		_accumulate_perf("detect_ms", _now_msec() - d0)
 	
 	var c0 = _now_msec()
-	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes)
+	var count_logical = true
+	if config != null and config.cc_config.has("count_logical_operators"):
+		count_logical = config.cc_config["count_logical_operators"]
+	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes, count_logical)
 	result.cc = cc
 	result.cc_breakdown = _cc_calc_instance.get_breakdown()
 	result.per_function_cc = _calculate_per_function_cc(control_flow_nodes, functions)
@@ -208,6 +223,8 @@ func _analyze_file(file_path: String, config, profiling: bool = false):
 	result.cog = cog_result.total_cog
 	result.cog_breakdown = cog_result.breakdown
 	result.per_function_cog = cog_result.per_function
+
+	_fill_extra_metrics(result, control_flow_nodes, functions, tokens)
 	
 	var confidence_weights = {}
 	if config.parser_config.has("confidence_weights"):
@@ -253,10 +270,43 @@ func _calculate_per_function_cc(control_flow_nodes: Array, functions: Array) -> 
 			if node.line >= func_info.start_line and node.line <= func_info.end_line:
 				func_nodes.append(node)
 		
-		var func_cc = _cc_calc_instance.calculate_cc(func_nodes)
+		var func_cc = _cc_calc_instance.calculate_cc(func_nodes, true)
 		per_function[func_info.name] = func_cc
 	
 	return per_function
+
+func _fill_extra_metrics(result: FileResult, control_flow_nodes: Array, functions: Array, tokens: Array) -> void:
+	var max_depth = 0
+	var arms = 0
+	var lambdas = 0
+	for node in control_flow_nodes:
+		if node.depth > max_depth:
+			max_depth = node.depth
+		if node.type == "case":
+			arms += 1
+		elif node.type == "lambda":
+			lambdas += 1
+	result.max_nesting_depth = max_depth
+	result.match_arm_count = arms
+	result.lambda_count = lambdas
+
+	var max_params = 0
+	for func_info in functions:
+		var pc = 0
+		if func_info.parameters != null:
+			pc = func_info.parameters.size()
+		if pc > max_params:
+			max_params = pc
+	result.max_params = max_params
+
+	# LOC: distinct lines that have a non-whitespace, non-comment token
+	var TokenType = load(ADDON_SRC + "tokenizer.gd").TokenType
+	var code_lines = {}
+	for token in tokens:
+		if token.type == TokenType.WHITESPACE or token.type == TokenType.COMMENT or token.type == TokenType.NEWLINE:
+			continue
+		code_lines[token.line] = true
+	result.loc_code = code_lines.size()
 
 func _reset_tools():
 	_tokenizer_class = null
@@ -282,7 +332,7 @@ func _now_msec() -> int:
 func _ensure_time_helper():
 	if _time_helper != null:
 		return _time_helper
-	_time_helper_path = (ADDON_SRC + "gd3/time_helper.gd") if Engine.get_version_info().get("major", 0) == 3 else (ADDON_SRC + "gd4/time_helper.gd")
+	_time_helper_path = ADDON_SRC + "gd4/time_helper.gd"
 	var helper_resource = load(_time_helper_path)
 	if helper_resource == null:
 		return null
@@ -341,7 +391,7 @@ func _sort_by_cog(arr: Array):
 			arr[best] = tmp
 		i += 1
 
-func get_project_result():
+func get_project_result():  # -> ProjectResult - nested class
 	return project_result
 
 func _ensure_logger(config):
@@ -356,6 +406,11 @@ func _log_error(code: String, message: String):
 		return
 	logger.log_with_code("error", code, message)
 
+func _log_warning(code: String, message: String):
+	if logger == null:
+		return
+	logger.log_with_code("warning", code, message)
+
 func _set_error_summary(file_results: Array):
 	var helper = load(ADDON_SRC + "error_summary.gd").new()
 	var summary = helper.summarize(file_results, project_result.errors)
@@ -363,9 +418,11 @@ func _set_error_summary(file_results: Array):
 	project_result.error_severity_summary = summary.by_severity
 	project_result.total_errors = summary.total
 
-static func create_file_result():
+# Helper methods to create nested class instances when class_name is commented out
+static func create_file_result():  # -> FileResult - nested class
 	return FileResult.new()
 
-static func create_project_result():
+static func create_project_result():  # -> ProjectResult - nested class
 	return ProjectResult.new()
+
 

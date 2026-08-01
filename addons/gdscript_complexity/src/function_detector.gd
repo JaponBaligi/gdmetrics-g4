@@ -1,4 +1,4 @@
-extends Object
+﻿extends Object
 class_name FunctionDetector
 
 # function boundary detector for
@@ -37,7 +37,7 @@ func detect_functions(tokens: Array) -> Array:
 	if tokens.size() == 0:
 		return []
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	
 	var i = 0
 	var current_function: FunctionInfo = null
@@ -100,7 +100,7 @@ func _get_line_indent(tokens: Array, token_index: int) -> int:
 	if token_index <= 0:
 		return 0
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var target_line = tokens[token_index].line
 	var i = token_index - 1
 	
@@ -138,7 +138,7 @@ func _count_indent(whitespace: String) -> int:
 
 func _parse_function_declaration(tokens: Array, start: int) -> Dictionary:
 
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = start
 	var func_type = "func"
 	var func_name = ""
@@ -189,15 +189,24 @@ func _parse_function_declaration(tokens: Array, start: int) -> Dictionary:
 	while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
 		i += 1
 
-	if i < tokens.size() and tokens[i].value == "-":
+	if i < tokens.size() and tokens[i].type == TokenType.OPERATOR and tokens[i].value == "->":
 		i += 1
-		if i < tokens.size() and tokens[i].value == ">":
+		while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
 			i += 1
-			while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
+		if i < tokens.size() and (tokens[i].type == TokenType.IDENTIFIER or tokens[i].type == TokenType.KEYWORD):
+			return_type = tokens[i].value
+			i += 1
+			# Typed collections: Array[int], Dictionary, etc.
+			while i < tokens.size() and tokens[i].type == TokenType.OPERATOR and tokens[i].value == "[":
+				return_type += "["
 				i += 1
-			if i < tokens.size() and tokens[i].type == TokenType.IDENTIFIER:
-				return_type = tokens[i].value
-				i += 1
+				while i < tokens.size() and tokens[i].value != "]":
+					if tokens[i].type != TokenType.WHITESPACE:
+						return_type += tokens[i].value
+					i += 1
+				if i < tokens.size() and tokens[i].value == "]":
+					return_type += "]"
+					i += 1
 	
 	var func_info = FunctionInfo.new(func_name, func_type, func_line, func_col)
 	func_info.parameters = params
@@ -206,7 +215,7 @@ func _parse_function_declaration(tokens: Array, start: int) -> Dictionary:
 	return {"function": func_info, "next_index": i}
 
 func _parse_signal_declaration(tokens: Array, start: int) -> Dictionary:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = start + 1  # Skip "signal"
 	var signal_name = ""
 	while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
@@ -243,4 +252,5 @@ func _parse_signal_declaration(tokens: Array, start: int) -> Dictionary:
 
 func get_errors() -> Array:
 	return errors.duplicate()
+
 

@@ -1,6 +1,6 @@
 # Run with: godot --script test_tokenizer.gd -- test_file.gd
 
-extends Reference
+extends RefCounted
 
 func _init():
 	var args = OS.get_cmdline_args()

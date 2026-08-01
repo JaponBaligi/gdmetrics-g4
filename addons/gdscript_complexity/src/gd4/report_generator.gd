@@ -1,4 +1,4 @@
-extends Object
+﻿extends Object
 
 # Report generator for Godot 4.x (JSON.stringify, FileAccess)
 
@@ -104,7 +104,12 @@ func _format_file_results(file_results: Array) -> Array:
 			"confidence": result.confidence,
 			"cc_breakdown": result.cc_breakdown,
 			"cog_breakdown": result.cog_breakdown,
-			"errors": result.errors
+			"errors": result.errors,
+			"max_nesting_depth": result.max_nesting_depth,
+			"match_arm_count": result.match_arm_count,
+			"lambda_count": result.lambda_count,
+			"loc_code": result.loc_code,
+			"max_params": result.max_params
 		}
 		if result.success:
 			file_data["functions"] = _format_functions(result.functions, result.per_function_cog)
@@ -219,3 +224,4 @@ func _csv_escape(value) -> String:
 		text = text.replace("\"", "\"\"")
 		text = "\"" + text + "\""
 	return text
+

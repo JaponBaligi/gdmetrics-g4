@@ -91,18 +91,10 @@ func _initialize():
 	# Modify file content (simulate by creating a temp file with different content)
 	var temp_file = ".test_temp_file.gd"
 	# Create a temp file with different content
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	if is_godot_3:
-		var file = File.new()
-		file.open(temp_file, File.WRITE)
+	var file = FileAccess.open(temp_file, FileAccess.WRITE)
+	if file != null:
 		file.store_string("# Different content")
-		file.close()
-	else:
-		var file = FileAccess.open(temp_file, FileAccess.WRITE)
-		if file != null:
-			file.store_string("# Different content")
-			file = null
+		file = null
 	
 	# Store result for temp file
 	var temp_result = load("res://addons/gdscript_complexity/src/batch_analyzer.gd").FileResult.new()
@@ -125,16 +117,10 @@ func _initialize():
 		print("WARNING: Failed to cache temp file (may be expected)")
 	
 	# Modify temp file content
-	if is_godot_3:
-		var file = File.new()
-		file.open(temp_file, File.WRITE)
+	file = FileAccess.open(temp_file, FileAccess.WRITE)
+	if file != null:
 		file.store_string("# Modified content - different")
-		file.close()
-	else:
-		var file = FileAccess.open(temp_file, FileAccess.WRITE)
-		if file != null:
-			file.store_string("# Modified content - different")
-			file = null
+		file = null
 	
 	# Try to retrieve - should be invalidated
 	var cached_after_modify = cache_manager.get_cached_result(temp_file, config)
@@ -146,13 +132,9 @@ func _initialize():
 		tests_passed += 1
 	
 	# Cleanup temp file
-	if is_godot_3:
-		var dir = Directory.new()
+	var dir = DirAccess.open(".")
+	if dir != null:
 		dir.remove(temp_file)
-	else:
-		var dir = DirAccess.open(".")
-		if dir != null:
-			dir.remove(temp_file)
 	
 	# Test 6: Cache invalidation on config change
 	print("\n[Test 6] Cache invalidation on config change...")

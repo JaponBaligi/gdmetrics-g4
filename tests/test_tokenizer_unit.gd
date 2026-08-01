@@ -8,13 +8,7 @@ var tests_passed = 0
 var tests_failed = 0
 
 func _init():
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	
-	if is_godot_3:
-		tokenizer = load("res://addons/gdscript_complexity/src/gd3/tokenizer.gd").new()
-	else:
-		tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
+	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	
 	run_all_tests()
 	quit(tests_failed)
@@ -31,6 +25,8 @@ func run_all_tests():
 	test_strings()
 	test_comments()
 	test_annotations()
+	test_node_path_shorthand()
+	test_export_enum_annotation()
 	test_malformed_input()
 	test_edge_cases()
 	
@@ -110,6 +106,32 @@ func test_annotations():
 			annotation_found = true
 			break
 	assert_true(annotation_found, "Annotations detected")
+
+func test_node_path_shorthand():
+	print("Testing $ node path shorthand...")
+	tokenizer.errors.clear()
+	tokenizer.tokens.clear()
+	tokenizer.tokenize_line("\tvar n = $snd_click", 1)
+	var found_dollar = false
+	for token in tokenizer.tokens:
+		if token.value == "$":
+			found_dollar = true
+			break
+	assert_true(found_dollar, "$ tokenized as operator")
+	assert_true(tokenizer.errors.size() == 0, "no errors for $snd_click")
+
+func test_export_enum_annotation():
+	print("Testing @export_enum annotation...")
+	tokenizer.errors.clear()
+	tokenizer.tokens.clear()
+	tokenizer.tokenize_line('@export_enum("Master", "Music") var bus_name : String', 1)
+	var found = false
+	for token in tokenizer.tokens:
+		if token.value == "@export_enum":
+			found = true
+			break
+	assert_true(found, "@export_enum tokenized")
+	assert_true(tokenizer.errors.size() == 0, "no errors for @export_enum")
 
 func test_malformed_input():
 	print("Testing malformed input handling...")

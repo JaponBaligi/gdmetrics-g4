@@ -35,8 +35,7 @@ func _initialize():
 	
 	project_result.file_results = [file_result]
 	
-	var report_gen_script = "res://addons/gdscript_complexity/src/gd3/report_generator.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://addons/gdscript_complexity/src/gd4/report_generator.gd"
-	var report_gen = load(report_gen_script).new()
+	var report_gen = load("res://addons/gdscript_complexity/src/gd4/report_generator.gd").new()
 	var csv_text = report_gen.generate_csv(project_result, null)
 	
 	var has_header = csv_text.begins_with("file_path,function_name,CC,C-COG,confidence,line_start,line_end")

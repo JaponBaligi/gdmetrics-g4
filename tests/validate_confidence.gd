@@ -1,4 +1,4 @@
-# Confidence validation and tuning tool
+﻿# Confidence validation and tuning tool
 # Run with: godot --headless --script tests/validate_confidence.gd -- [--apply] [--step 0.1] [--min-r2 0.7] [--metrics-out path]
 
 extends SceneTree
@@ -10,8 +10,8 @@ var expected_values = {
 	"for_loop.gd": {"cc": 2, "cog": 2},
 	"while_loop.gd": {"cc": 2, "cog": 2},
 	"nested_control_flow.gd": {"cc": 4, "cog": 9},
-	"match_statement.gd": {"cc": 2, "cog": 5},
-	"logical_operators.gd": {"cc": 5, "cog": 8},
+	"match_statement.gd": {"cc": 5, "cog": 8},
+	"logical_operators.gd": {"cc": 5, "cog": 10},
 	"class_with_inheritance.gd": {"cc": 2, "cog": 2},
 	"empty_file.gd": {"cc": 1, "cog": 0},
 	"with_yield.gd": {"cc": 2, "cog": 2},
@@ -85,11 +85,9 @@ func _run():
 func _collect_scores(config, version_adapter) -> Array:
 	var scores = []
 	var fixtures_path = "res://tests/fixtures"
-	var discovery_script = "res://addons/gdscript_complexity/src/gd3/file_discovery.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://addons/gdscript_complexity/src/gd4/file_discovery.gd"
-	var discovery = load(discovery_script).new()
+	var discovery = load("res://addons/gdscript_complexity/src/gd4/file_discovery.gd").new()
 	var files = discovery.find_files(fixtures_path, ["res://**/*.gd"], [])
 	
-	var tokenizer_script = "res://addons/gdscript_complexity/src/gd3/tokenizer.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://addons/gdscript_complexity/src/tokenizer.gd"
 	var detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
 	var func_detector = load("res://addons/gdscript_complexity/src/function_detector.gd").new()
 	var cc_calc = load("res://addons/gdscript_complexity/src/cc_calculator.gd").new()
@@ -101,10 +99,7 @@ func _collect_scores(config, version_adapter) -> Array:
 		if not expected_values.has(filename):
 			continue
 		
-		if Engine.get_version_info().get("major", 0) == 3 and filename == "match_statement.gd":
-			continue
-		
-		var tokenizer = load(tokenizer_script).new()
+		var tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 		var tokens = tokenizer.tokenize_file(file_path)
 		var errors = tokenizer.get_errors()
 		var parse_quality = _compute_parse_quality(errors, tokens.size())
@@ -233,8 +228,7 @@ func _generate_weight_grid(step: float) -> Array:
 
 func _apply_weights_to_config(weights: Dictionary) -> bool:
 	var file_path = "res://complexity_config.json"
-	var file_helper_script = "res://tests/file_helper_3.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
+	var file_helper = load("res://tests/file_helper_4.gd").new()
 	var content = file_helper.read_file(file_path)
 	if content == "":
 		return false
@@ -252,8 +246,7 @@ func _apply_weights_to_config(weights: Dictionary) -> bool:
 	return file_helper.write_file(file_path, json_text)
 
 func _write_metrics(output_path: String, current_r2: float, best_r2: float, best_weights: Dictionary, step: float) -> void:
-	var file_helper_script = "res://tests/file_helper_3.gd" if Engine.get_version_info().get("major", 0) == 3 else "res://tests/file_helper_4.gd"
-	var file_helper = load(file_helper_script).new()
+	var file_helper = load("res://tests/file_helper_4.gd").new()
 	var payload = {
 		"current_r2": current_r2,
 		"best_r2": best_r2,
@@ -262,3 +255,4 @@ func _write_metrics(output_path: String, current_r2: float, best_r2: float, best
 	}
 	var json_text = file_helper.stringify_json(payload)
 	file_helper.write_file(output_path, json_text)
+

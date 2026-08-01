@@ -8,7 +8,7 @@ class_name CCCalculator
 var cc_value: int = 0
 var breakdown: Dictionary = {}
 
-func calculate_cc(control_flow_nodes: Array) -> int:
+func calculate_cc(control_flow_nodes: Array, count_logical_operators: bool = true) -> int:
 	cc_value = 1  # Base complexity
 	breakdown = {
 		"base": 1,
@@ -18,6 +18,7 @@ func calculate_cc(control_flow_nodes: Array) -> int:
 		"while": 0,
 		"match": 0,
 		"case": 0,
+		"ternary": 0,
 		"and": 0,
 		"or": 0,
 		"not": 0
@@ -28,6 +29,9 @@ func calculate_cc(control_flow_nodes: Array) -> int:
 			"if":
 				cc_value += 1
 				breakdown["if"] += 1
+			"ternary":
+				cc_value += 1
+				breakdown["ternary"] += 1
 			"elif":
 				cc_value += 1
 				breakdown["elif"] += 1
@@ -44,14 +48,17 @@ func calculate_cc(control_flow_nodes: Array) -> int:
 				cc_value += 1
 				breakdown["case"] += 1
 			"and":
-				cc_value += 1
-				breakdown["and"] += 1
+				if count_logical_operators:
+					cc_value += 1
+					breakdown["and"] += 1
 			"or":
-				cc_value += 1
-				breakdown["or"] += 1
+				if count_logical_operators:
+					cc_value += 1
+					breakdown["or"] += 1
 			"not":
-				cc_value += 1
-				breakdown["not"] += 1
+				if count_logical_operators:
+					cc_value += 1
+					breakdown["not"] += 1
 	
 	return cc_value
 

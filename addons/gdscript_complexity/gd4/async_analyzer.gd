@@ -1,4 +1,4 @@
-@tool
+﻿@tool
 extends RefCounted
 # Processes files in batches without blocking UI
 
@@ -141,16 +141,21 @@ func _analyze_file(file_path: String):  # -> BatchAnalyzer.FileResult - loaded d
 	var tokens = tokenizer.tokenize_file(file_path)
 	var tokenizer_errors = tokenizer.get_errors()
 	
-	if tokenizer_errors.size() > 0:
+	if tokenizer_errors.size() > 0 and tokens.size() == 0:
 		result.errors = tokenizer_errors
 		result.success = false
 		_log_error("TOKEN_PARSE_ERROR", "Tokenization failed for %s" % file_path)
 		return result
+
+	if tokenizer_errors.size() > 0:
+		result.errors = tokenizer_errors
+		_log_error("TOKEN_PARSE_ERROR", "Tokenizer warnings for %s (%d)" % [file_path, tokenizer_errors.size()])
 	
 	if tokens.size() == 0:
-		result.errors.append(_error_codes.format("NO_TOKENS_FOUND", "No tokens found"))
-		result.success = false
-		_log_error("NO_TOKENS_FOUND", "No tokens found in %s" % file_path)
+		result.success = true
+		result.cc = 0
+		result.cog = 0
+		result.confidence = version_adapter.get_confidence_cap() if version_adapter != null else 1.0
 		return result
 	
 	var control_flow_nodes = _detector_instance.detect_control_flow(tokens, version_adapter)
@@ -167,7 +172,10 @@ func _analyze_file(file_path: String):  # -> BatchAnalyzer.FileResult - loaded d
 	if class_errors.size() > 0:
 		result.errors += class_errors
 	
-	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes)
+	var count_logical = true
+	if config != null and config.cc_config.has("count_logical_operators"):
+		count_logical = config.cc_config["count_logical_operators"]
+	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes, count_logical)
 	result.cc = cc
 	result.cc_breakdown = _cc_calc_instance.get_breakdown()
 	result.per_function_cc = _calculate_per_function_cc(control_flow_nodes, functions)
@@ -291,3 +299,4 @@ func _ensure_tools():
 	_cog_calc_instance = load(SRC_ROOT + "/cog_complexity_calculator.gd").new()
 	_confidence_calc_instance = load(SRC_ROOT + "/confidence_calculator.gd").new()
 	_tools_ready = true
+

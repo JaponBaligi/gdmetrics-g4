@@ -36,14 +36,9 @@ func _detect_annotation_support():
 		annotation_api = "add_error_annotation"
 		return
 
-	if script_editor.has_method("set_error"):
-		has_annotation_support = true
-		annotation_api = "set_error"
-		return
-
 	has_annotation_support = false
 	annotation_api = "none"
-	print("[ComplexityAnalyzer] No annotation API available (neither add_error_annotation nor set_error)")
+	print("[ComplexityAnalyzer] No annotation API available (add_error_annotation not exposed by this editor build)")
 
 func add_complexity_annotation(script_path: String, line: int, message: String, severity: String = "warning"):
 	severity = _normalize_severity(severity)
@@ -60,8 +55,6 @@ func add_complexity_annotation(script_path: String, line: int, message: String, 
 	
 	if annotation_api == "add_error_annotation":
 		_add_error_annotation_4x(script_path, line, message, severity)
-	elif annotation_api == "set_error":
-		_set_error_3x(script_path, line, message, severity)
 	else:
 		_fallback_log(script_path, line, message, severity)
 
@@ -79,14 +72,6 @@ func _add_error_annotation_4x(script_path: String, line: int, message: String, s
 		severity_enum = 2
 	
 	script_editor.add_error_annotation(script_path, line, severity_enum, message)
-
-func _set_error_3x(script_path: String, line: int, message: String, severity: String):
-	if not script_editor.has_method("set_error"):
-		_fallback_log(script_path, line, message, severity)
-		return
-	
-	var full_message = "[%s] %s" % [severity.to_upper(), message]
-	script_editor.set_error(script_path, line, full_message)
 
 func add_cc_warning(script_path: String, line: int, cc_value: int, threshold: int):
 	var message = "High Cyclomatic Complexity: %d (threshold: %d)" % [cc_value, threshold]
@@ -120,8 +105,6 @@ func clear_annotations(script_path: String):
 	
 	if annotation_api == "add_error_annotation" and script_editor.has_method("clear_annotations"):
 		script_editor.clear_annotations(script_path)
-	elif annotation_api == "set_error" and script_editor.has_method("clear_errors"):
-		script_editor.clear_errors(script_path)
 	else:
 		_fallback_log(script_path, 1, "clear_annotations not supported", "info")
 

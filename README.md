@@ -198,7 +198,7 @@ For full options, see `complexity_config.example.json`.
 
 **Default Behavior When No Config File is Present:**
 - If no `complexity_config.json` is found, the analyzer uses built-in defaults
-- Default patterns: `include: ["res://**/*.gd"]`, `exclude: ["res://addons/**"]`
+- Default patterns: `include: ["res://**/*.gd"]`, `exclude` includes `.git`, `.godot`, `addons/gdscript_complexity/**`, `tests/**`, and similar noise paths
 - Default CC thresholds: warn at 10, fail at 20
 - Default COG thresholds: warn at 15, fail at 30
 - Caching is **enabled by default** for performance
@@ -387,13 +387,9 @@ This tool is a **static analyzer**, not a runtime profiler. Understand its limit
 
 ### Technical Limitations
 
-- **Parser Accuracy**: Block-oriented parser, not full AST
-  - Godot 4.x: 90-93% accuracy
-  - Godot 3.x: 85-90% accuracy
+- **Parser Accuracy**: Block-oriented parser, not full AST (typical 90-93% accuracy on Godot 4.x)
 - **GDScript Only**: Does not analyze C#, C++, or other Godot languages
 - **Metrics are Heuristic-Based**: CC and C-COG are approximations based on control flow patterns, not execution traces
-- **Confidence Cap**: Godot 3.x confidence scores capped at 0.90 maximum
-- **Match Statements**: Not supported in Godot 3.x (language limitation)
 - **Expression Parsing**: Shallow parsing (by design, sufficient for complexity metrics)
 - **Metrics reflect code structure**: Numbers measure structural complexity, not algorithmic complexity
 

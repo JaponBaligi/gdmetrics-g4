@@ -1,4 +1,4 @@
-extends Object
+﻿extends Object
 class_name ClassDetector
 
 # class definition detector
@@ -41,11 +41,13 @@ func detect_classes(tokens: Array) -> Array:
 	if tokens.size() == 0:
 		return []
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	
 	var i = 0
 	var current_class: ClassInfo = null
 	var class_indent = -1
+	# A script file is itself a class, so top-level extends/class_name belong to it
+	var file_class: ClassInfo = null
 	
 	while i < tokens.size():
 		var token = tokens[i]
@@ -72,7 +74,10 @@ func detect_classes(tokens: Array) -> Array:
 					if current_class != null:
 						current_class.class_name_decl = class_name_result["class_name"]
 					else:
-						_append_error("CLASS_DECLARATION_MISSING", "class_name declaration without class definition at line %d" % token.line)
+						if file_class == null:
+							file_class = _create_file_class(token)
+						file_class.class_name_decl = class_name_result["class_name"]
+						file_class.name = class_name_result["class_name"]
 					i = class_name_result["next_index"]
 					continue
 			elif token.value == "extends":
@@ -81,7 +86,9 @@ func detect_classes(tokens: Array) -> Array:
 					if current_class != null:
 						current_class.extends_class = extends_result["extends_class"]
 					else:
-						_append_error("EXTENDS_WITHOUT_CLASS", "extends declaration without class definition at line %d" % token.line)
+						if file_class == null:
+							file_class = _create_file_class(token)
+						file_class.extends_class = extends_result["extends_class"]
 					i = extends_result["next_index"]
 					continue
 			elif token.value == "class":
@@ -104,7 +111,15 @@ func detect_classes(tokens: Array) -> Array:
 		else:
 			current_class.end_line = current_class.start_line
 	
+	if file_class != null and tokens.size() > 0:
+		file_class.end_line = tokens[tokens.size() - 1].line
+	
 	return classes.duplicate()
+
+func _create_file_class(token) -> ClassInfo:
+	var info = ClassInfo.new("<file>", token.line, token.column)
+	classes.insert(0, info)
+	return info
 
 func _ensure_error_codes():
 	if _error_codes == null:
@@ -118,7 +133,7 @@ func _get_line_indent(tokens: Array, token_index: int) -> int:
 	if token_index <= 0:
 		return 0
 	
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var target_line = tokens[token_index].line
 	var i = token_index - 1
 	
@@ -154,7 +169,7 @@ func _count_indent(whitespace: String) -> int:
 	return count
 
 func _parse_class_name_declaration(tokens: Array, start: int) -> Dictionary:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = start + 1
 	var name_value = ""
 	
@@ -170,23 +185,45 @@ func _parse_class_name_declaration(tokens: Array, start: int) -> Dictionary:
 	return {"class_name": name_value, "next_index": i}
 
 func _parse_extends_declaration(tokens: Array, start: int) -> Dictionary:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = start + 1
 	var extends_class = ""
 	
 	while i < tokens.size() and tokens[i].type == TokenType.WHITESPACE:
 		i += 1
 	
-	if i >= tokens.size() or tokens[i].type != TokenType.IDENTIFIER:
+	if i >= tokens.size():
+		return {"extends_class": "", "next_index": start + 1}
+
+	if tokens[i].type == TokenType.STRING:
+		extends_class = tokens[i].value
+		# Strip quotes for cleaner reporting
+		if extends_class.length() >= 2:
+			var q0 = extends_class[0]
+			var q1 = extends_class[extends_class.length() - 1]
+			if (q0 == '"' or q0 == "'") and q1 == q0:
+				extends_class = extends_class.substr(1, extends_class.length() - 2)
+		i += 1
+		return {"extends_class": extends_class, "next_index": i}
+
+	if tokens[i].type != TokenType.IDENTIFIER:
 		return {"extends_class": "", "next_index": start + 1}
 	
 	extends_class = tokens[i].value
 	i += 1
+	# Dotted paths: Node.SubClass
+	while i < tokens.size() and tokens[i].type == TokenType.OPERATOR and tokens[i].value == ".":
+		i += 1
+		if i < tokens.size() and tokens[i].type == TokenType.IDENTIFIER:
+			extends_class += "." + tokens[i].value
+			i += 1
+		else:
+			break
 	
 	return {"extends_class": extends_class, "next_index": i}
 
 func _parse_class_declaration(tokens: Array, start: int) -> Dictionary:
-	var TokenType = load((SRC_ROOT + "/gd3/tokenizer.gd") if Engine.get_version_info().get("major", 0) == 3 else (SRC_ROOT + "/tokenizer.gd")).TokenType
+	var TokenType = load(SRC_ROOT + "/tokenizer.gd").TokenType
 	var i = start + 1
 	var name_value = ""
 	
@@ -207,4 +244,5 @@ func _parse_class_declaration(tokens: Array, start: int) -> Dictionary:
 
 func get_errors() -> Array:
 	return errors.duplicate()
+
 

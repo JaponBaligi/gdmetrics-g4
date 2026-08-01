@@ -18,6 +18,7 @@ class CogComplexityResult:
 			"while": 0,
 			"match": 0,
 			"case": 0,
+			"ternary": 0,
 			"and": 0,
 			"or": 0,
 			"not": 0,
@@ -109,6 +110,11 @@ func _apply_node(node, target_result: CogComplexityResult, allow_match_tracking:
 		var contribution = 1 + node.depth
 		target_result.total_cog += contribution
 		target_result.breakdown["if"] += contribution
+	elif node.type == "ternary":
+		# Ternary is a decision without nesting bump beyond current depth
+		var contribution_t = 1 + node.depth
+		target_result.total_cog += contribution_t
+		target_result.breakdown["ternary"] += contribution_t
 	elif node.type == "elif":
 		var contribution = 1 + node.depth
 		target_result.total_cog += contribution

@@ -14,14 +14,7 @@ func _init():
 	cog_calculator = load("res://addons/gdscript_complexity/src/cog_complexity_calculator.gd").new()
 	control_flow_detector = load("res://addons/gdscript_complexity/src/control_flow_detector.gd").new()
 	function_detector = load("res://addons/gdscript_complexity/src/function_detector.gd").new()
-	
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	
-	if is_godot_3:
-		tokenizer = load("res://addons/gdscript_complexity/src/gd3/tokenizer.gd").new()
-	else:
-		tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
+	tokenizer = load("res://addons/gdscript_complexity/src/tokenizer.gd").new()
 	
 	run_all_tests()
 	quit(tests_failed)
@@ -75,15 +68,10 @@ func test_nesting_penalties():
 
 func test_match_case_handling():
 	print("Testing match/case handling...")
-	var version_info = Engine.get_version_info()
-	var is_godot_3 = version_info.get("major", 0) == 3
-	if is_godot_3:
-		print("SKIP: match/case not supported in Godot 3.x")
-		return
 	var result = analyze_file("res://tests/fixtures/match_statement.gd")
-	# match (depth 1) = 2, returns inside control flow = 3
-	# Total: 5
-	assert_true(result.cog == 5, "Match handled correctly (C-COG: 5)")
+	# match (depth 1) = 2, 3 arms = 3, returns inside control flow = 3
+	# Total: 8
+	assert_true(result.cog == 8, "Match arms handled correctly (C-COG: 8)")
 
 func test_per_function_cog():
 	print("Testing per-function C-COG...")

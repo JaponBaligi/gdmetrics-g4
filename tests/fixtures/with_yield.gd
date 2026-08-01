@@ -1,4 +1,4 @@
-# Godot 3.x yield syntax - CC: 2, C-COG: 2
+# yield syntax fixture - CC: 2, C-COG: 2
 # Expected: CC = 1 (base) + 1 (if) = 2
 # Expected: C-COG = 2 (if at depth 1)
 # Note: yield is not a control flow structure for CC/C-COG

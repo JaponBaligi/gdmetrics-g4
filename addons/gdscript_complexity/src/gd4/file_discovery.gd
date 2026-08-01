@@ -2,6 +2,8 @@ extends Object
 
 # File discovery for Godot 4.x (DirAccess, path_join)
 
+var _pattern_cache: Dictionary = {}
+
 func find_files(root_path: String, include_patterns: Array, exclude_patterns: Array) -> Array:
 	var files: Array = []
 	root_path = _sanitize_path(root_path)
@@ -73,16 +75,48 @@ func _match_pattern(file_path: String, pattern: String) -> bool:
 	var normalized_pattern = pattern.replace("\\", "/")
 	if normalized_pattern == normalized_path:
 		return true
-	if normalized_pattern.ends_with("**/*.gd"):
-		var prefix = normalized_pattern.substr(0, normalized_pattern.length() - 7)
-		if normalized_path.begins_with(prefix) and normalized_path.ends_with(".gd"):
-			return true
-	if normalized_pattern.ends_with("/*.gd"):
-		var prefix = normalized_pattern.substr(0, normalized_pattern.length() - 5)
-		if normalized_path.begins_with(prefix) and normalized_path.ends_with(".gd"):
-			var remaining = normalized_path.substr(prefix.length())
-			if remaining.count("/") == 1:
-				return true
-	if normalized_pattern.ends_with(".gd"):
-		return normalized_path.ends_with(normalized_pattern)
-	return false
+
+	# Bare file names (e.g. "player.gd") match by base name anywhere in the tree
+	if normalized_pattern.find("/") < 0 and normalized_pattern.ends_with(".gd") and normalized_pattern.find("*") < 0:
+		return normalized_path.ends_with("/" + normalized_pattern) or normalized_path == normalized_pattern
+
+	var regex = _get_pattern_regex(normalized_pattern)
+	if regex == null:
+		return false
+	return regex.search(normalized_path) != null
+
+func _get_pattern_regex(pattern: String):
+	if _pattern_cache.has(pattern):
+		return _pattern_cache[pattern]
+	var regex = RegEx.new()
+	if regex.compile(_glob_to_regex(pattern)) != OK:
+		_pattern_cache[pattern] = null
+		return null
+	_pattern_cache[pattern] = regex
+	return regex
+
+func _glob_to_regex(pattern: String) -> String:
+	const SPECIAL = ".^$+(){}[]|\\"
+	var out = "^"
+	var i = 0
+	while i < pattern.length():
+		var c = pattern[i]
+		if c == "*":
+			if i + 1 < pattern.length() and pattern[i + 1] == "*":
+				# "**/" spans zero or more directories, bare "**" spans anything
+				if i + 2 < pattern.length() and pattern[i + 2] == "/":
+					out += "(?:.*/)?"
+					i += 3
+					continue
+				out += ".*"
+				i += 2
+				continue
+			out += "[^/]*"
+		elif c == "?":
+			out += "[^/]"
+		elif SPECIAL.find(c) >= 0:
+			out += "\\" + c
+		else:
+			out += c
+		i += 1
+	return out + "$"
