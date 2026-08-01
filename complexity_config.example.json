@@ -42,6 +42,7 @@
 		"output_path": "res://complexity_report.json",
 		"csv_output_path": "res://complexity_report.csv",
 		"html_output_path": "res://complexity_report.html",
+		"history_path": "complexity_history.jsonl",
 		"auto_export": false
 	},
 	"performance": {

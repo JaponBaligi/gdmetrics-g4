@@ -15,15 +15,19 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        godot: ["4.0.4", "4.2.0"]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Godot (4.x)
+      - name: Setup Godot (${{ matrix.godot }})
         uses: chickensoft-games/setup-godot@v1
         with:
-          version: "4.2.0"
+          version: ${{ matrix.godot }}
           include-templates: false
           use-dotnet: false
 
@@ -55,7 +59,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-godot4
+          name: ci-godot-${{ matrix.godot }}
           path: |
             ci_report.json
             ci_report.csv

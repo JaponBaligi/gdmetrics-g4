@@ -306,10 +306,24 @@ func _finalize_analysis(project_result):
 	
 	if config_manager != null:
 		var config = config_manager.get_config()
+		_append_history(project_result, config)
 		if config.report_config.get("auto_export", false):
 			call_deferred("_auto_export_reports", project_result)
 	else:
 		push_error("[Plugin] ERROR: dock_panel is null in _finalize_analysis!")
+
+func _append_history(project_result, config) -> void:
+	if project_result == null or config == null:
+		return
+	var history = load(ADDON_SRC + "history_store.gd").new()
+	var gate = load(ADDON_SRC + "threshold_gate.gd").new()
+	var gate_result = gate.evaluate(project_result, config)
+	var fail_count = int(gate_result.get("fail_count", 0))
+	if history.append_from_result(project_result, config, fail_count):
+		if _VERBOSE_TRACE:
+			print("[Plugin] History appended")
+	gate = null
+	history = null
 
 func _on_analysis_cancelled():
 	call_deferred("_handle_cancellation")

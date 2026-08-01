@@ -31,6 +31,7 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 - `report.formats`: `json`, `csv`
 - `report.output_path`: JSON output path
 - `report.csv_output_path`: CSV output path
+- `report.history_path`: append-only JSONL history path (default `complexity_history.jsonl`)
 - `report.auto_export`: auto write after analysis
 - `report.annotate_editor`: enable/disable editor warnings
 - `performance.enable_caching`: caching on/off
@@ -51,7 +52,21 @@ godot --headless --script cli/analyze_project.gd -- \
   --project-path . --output report.json --csv-output report.csv
 ```
 
-Exit codes: `0` ok, `1` threshold_fail breach, `2` tool error. See `docs/DISTRIBUTION.md`.
+Each successful run appends one JSON line to `complexity_history.jsonl` (or `report.history_path` / `--history-path`).
+
+Trend vs previous history line (informational):
+```bash
+godot --headless --script cli/analyze_project.gd -- \
+  --project-path . --output report.json --diff
+```
+
+Compare to a snapshot and fail when `avg_cog` or `fail_count` increases:
+```bash
+godot --headless --script cli/analyze_project.gd -- \
+  --project-path . --output report.json --baseline baseline.jsonl --fail-on-diff-regression
+```
+
+Exit codes: `0` ok, `1` threshold_fail breach or diff regression (with `--fail-on-diff-regression`), `2` tool error. See `docs/DISTRIBUTION.md`.
 
 ### Auto export
 Enable `report.auto_export` and specify formats:

@@ -36,5 +36,7 @@ Copy the workflow under `examples/github-actions/complexity-check.yml` into your
 | Code | Meaning |
 |------|---------|
 | 0 | Analysis ok, no `threshold_fail` breaches |
-| 1 | One or more functions exceeded `threshold_fail`, or zero successful files |
+| 1 | One or more functions exceeded `threshold_fail`, zero successful files, or `--fail-on-diff-regression` when `avg_cog` / `fail_count` increased vs baseline/previous |
 | 2 | Tool / path / write error |
+
+History: each successful CLI (and editor) analysis appends one JSON line to `complexity_history.jsonl` (override with `report.history_path` or `--history-path`). Use `--diff` for an informational delta; add `--baseline PATH` to compare against a JSON/JSONL snapshot.

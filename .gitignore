@@ -12,6 +12,7 @@ export_presets.cfg
 # Analysis / metric outputs
 complexity_report.json
 complexity_report.csv
+complexity_history.jsonl
 accuracy_report_*.json
 test_results.json
 *.report.json
@@ -91,3 +92,5 @@ docs/CHANGELOG_TEMPLATE.md
 ci_report.csv
 
 ci_report.html
+
+complexity_history.jsonl

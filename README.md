@@ -77,8 +77,8 @@ godot --headless --script cli/analyze_project.gd -- \
   --project-path . --output report.json --csv-output report.csv
 ```
 
-Exit codes: `0` ok, `1` `threshold_fail` breach (or no successful files), `2` tool/path error.  
-Use `--no-fail-on-threshold` to always exit 0/2 (report only).  
+Exit codes: `0` ok, `1` `threshold_fail` breach (or no successful files, or `--fail-on-diff-regression`), `2` tool/path error.
+Use `--no-fail-on-threshold` to always exit 0/2 (report only). Use `--diff` for history deltas.
 `tests/ci_test.gd` remains a thin wrapper around this script.
 
 Copy-paste GitHub Actions: [`examples/github-actions/complexity-check.yml`](examples/github-actions/complexity-check.yml).
@@ -414,7 +414,7 @@ Confidence scores estimate parse reliability. Use `tests/validate_confidence.gd`
 - Untagged commits may contain experimental features
 
 **Current Release Status:**
-- **v0.3.0** is labeled as **early release / pre-stable**
+- **v0.4.0** is labeled as **early release / pre-stable**
 - Versioning follows [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`); see [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)
 - **Breaking changes may occur before PROUD 1.0.0** (see [docs/BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md))
 - Configuration, CLI arguments, and output formats may change
@@ -451,7 +451,7 @@ For detailed breaking changes, see the [BREAKING_CHANGES.md](docs/BREAKING_CHANG
 
 Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). One tagged release at a time.
 
-### Current Release (v0.3.0 — DEFAULT)
+### Current Release (v0.4.0 — DEFAULT)
 - ✅ CC and C-COG metrics
 - ✅ JSON and CSV export
 - ✅ HTML report (CLI `--html-output` + dock Export HTML)
@@ -464,9 +464,10 @@ Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). 
 - ✅ Match/`when`, lambdas, multiline strings, edge-case corpus gates
 - ✅ `threshold_fail` CI exit codes + breach summary
 - ✅ Consumer GitHub Actions template (`examples/github-actions/`)
+- ✅ Append-only `complexity_history.jsonl` + CLI `--diff` / `--fail-on-diff-regression`
+- ✅ CI matrix Godot 4.0.4 + 4.2.0
 
 ### Planned (later DEFAULT / PROUD — not started until prior tag ships)
-- 🔲 0.4.0 — Complexity trend tracking
 - 🔲 1.0.0 PROUD — schema freeze, shared-core, g4 annotations
 - 🔲 Custom metric plugins (after 1.0)
 

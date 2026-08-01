@@ -2,10 +2,11 @@
 # Run with:
 #   godot --headless --script cli/analyze_project.gd -- \
 #     --project-path . --output report.json --csv-output report.csv --html-output report.html
+#     [--history-path PATH] [--diff] [--baseline PATH] [--fail-on-diff-regression]
 #
 # Exit codes:
 #   0 — analysis ok, no threshold_fail breaches
-#   1 — threshold_fail breach, or no successful file analysis
+#   1 — threshold_fail breach, no successful file analysis, or diff regression (with --fail-on-diff-regression)
 #   2 — tool/config/path error
 
 extends SceneTree
@@ -26,7 +27,11 @@ func _initialize():
 		parsed["output_path"],
 		parsed["csv_output_path"],
 		parsed["html_output_path"],
-		parsed["fail_on_threshold"]
+		parsed["fail_on_threshold"],
+		parsed["history_path"],
+		parsed["do_diff"],
+		parsed["baseline_path"],
+		parsed["fail_on_diff_regression"]
 	)
 	call_deferred("quit", exit_code)
 
@@ -36,6 +41,10 @@ func _parse_args() -> Dictionary:
 	var csv_output_path = ""
 	var html_output_path = ""
 	var fail_on_threshold = true
+	var history_path = ""
+	var do_diff = false
+	var baseline_path = ""
+	var fail_on_diff_regression = false
 
 	var args = OS.get_cmdline_args()
 	var user_args = []
@@ -62,6 +71,18 @@ func _parse_args() -> Dictionary:
 		elif arg == "--html-output" and i + 1 < user_args.size():
 			html_output_path = _sanitize_path(user_args[i + 1])
 			i += 2
+		elif arg == "--history-path" and i + 1 < user_args.size():
+			history_path = _sanitize_path(user_args[i + 1])
+			i += 2
+		elif arg == "--baseline" and i + 1 < user_args.size():
+			baseline_path = _sanitize_path(user_args[i + 1])
+			i += 2
+		elif arg == "--diff":
+			do_diff = true
+			i += 1
+		elif arg == "--fail-on-diff-regression":
+			fail_on_diff_regression = true
+			i += 1
 		elif arg == "--no-fail-on-threshold":
 			fail_on_threshold = false
 			i += 1
@@ -76,7 +97,11 @@ func _parse_args() -> Dictionary:
 		"output_path": output_path,
 		"csv_output_path": csv_output_path,
 		"html_output_path": html_output_path,
-		"fail_on_threshold": fail_on_threshold
+		"fail_on_threshold": fail_on_threshold,
+		"history_path": history_path,
+		"do_diff": do_diff,
+		"baseline_path": baseline_path,
+		"fail_on_diff_regression": fail_on_diff_regression
 	}
 
 func _sanitize_path(path: String) -> String:
@@ -104,7 +129,11 @@ func run_analysis(
 	output_path: String,
 	csv_output_path: String,
 	html_output_path: String = "",
-	fail_on_threshold: bool = true
+	fail_on_threshold: bool = true,
+	history_path: String = "",
+	do_diff: bool = false,
+	baseline_path: String = "",
+	fail_on_diff_regression: bool = false
 ) -> int:
 	print("Running project complexity analysis...")
 
@@ -203,7 +232,36 @@ func run_analysis(
 		print("FAIL: %d function(s) exceeded threshold_fail" % gate["fail_count"])
 		exit_code = 1
 
+	var history = load("res://addons/gdscript_complexity/src/history_store.gd").new()
+	var resolved_history = history.resolve_path(default_config, history_path)
+	var current_record = history.build_record(project_result, int(gate["fail_count"]))
+
+	var want_diff = do_diff or fail_on_diff_regression
+	if want_diff:
+		var previous = {}
+		if baseline_path != "":
+			previous = history.load_baseline(baseline_path)
+			if previous.size() == 0:
+				print("WARNING: could not load baseline from %s" % baseline_path)
+		else:
+			previous = history.load_previous(resolved_history)
+			if previous.size() == 0:
+				print("WARNING: no previous history entry at %s" % resolved_history)
+		if previous.size() > 0:
+			var diff = history.diff_records(current_record, previous)
+			if do_diff or fail_on_diff_regression:
+				history.print_diff_summary(diff)
+			if fail_on_diff_regression and history.is_regression(diff):
+				print("FAIL: complexity regression vs baseline/previous (avg_cog or fail_count increased)")
+				exit_code = 1
+
+	if history.append_record(current_record, resolved_history):
+		print("History appended to: %s" % resolved_history)
+	else:
+		print("WARNING: failed to append history to %s" % resolved_history)
+
 	gate_helper = null
+	history = null
 	_cleanup(report_gen, batch_analyzer, version_adapter, config, default_config, project_result)
 	return exit_code
 

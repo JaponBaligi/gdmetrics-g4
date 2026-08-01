@@ -60,6 +60,7 @@ class Config:
 			"output_path": "res://complexity_report.json",
 			"csv_output_path": "res://complexity_report.csv",
 			"html_output_path": "res://complexity_report.html",
+			"history_path": "complexity_history.jsonl",
 			"auto_export": false,
 			"annotate_editor": false
 		}
@@ -298,6 +299,10 @@ func _parse_report_config(report_data: Dictionary):
 	if report_data.has("annotate_editor"):
 		if report_data["annotate_editor"] is bool:
 			config.report_config["annotate_editor"] = report_data["annotate_editor"]
+
+	if report_data.has("history_path"):
+		if report_data["history_path"] is String:
+			config.report_config["history_path"] = report_data["history_path"]
 
 func _parse_performance_config(perf_data: Dictionary):
 	if perf_data.has("enable_caching"):

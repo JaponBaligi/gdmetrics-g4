@@ -23,3 +23,15 @@ func close_file(file):
 func write_line(file, text: String):
 	if file != null:
 		file.store_string(text + "\n")
+
+func timestamp_utc() -> String:
+	return Time.get_datetime_string_from_system(true)
+
+func stringify_json(data: Dictionary) -> String:
+	return JSON.stringify(data)
+
+func parse_json_text(text: String) -> Dictionary:
+	var parsed = JSON.parse_string(text)
+	if parsed != null and parsed is Dictionary:
+		return parsed
+	return {}
