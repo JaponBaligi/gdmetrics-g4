@@ -8,7 +8,9 @@
 		"res://node_modules/**",
 		"res://addons/gdscript_complexity/**",
 		"res://addons/**/test/**",
-		"res://tests/**"
+		"res://tests/**",
+		"res://cli/**",
+		"res://examples/**"
 	],
 	"cc": {
 		"threshold_warn": 10,

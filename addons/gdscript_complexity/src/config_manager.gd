@@ -25,7 +25,9 @@ class Config:
 			"res://node_modules/**",
 			"res://addons/gdscript_complexity/**",
 			"res://addons/**/test/**",
-			"res://tests/**"
+			"res://tests/**",
+			"res://cli/**",
+			"res://examples/**"
 		]
 		cc_config = {
 			"count_logical_operators": true,
@@ -189,25 +191,30 @@ func _parse_cc_config(cc_data: Dictionary):
 			config.cc_config["count_logical_operators"] = cc_data["count_logical_operators"]
 	
 	if cc_data.has("threshold_warn"):
-		if cc_data["threshold_warn"] is int and cc_data["threshold_warn"] >= 0:
-			config.cc_config["threshold_warn"] = cc_data["threshold_warn"]
+		var v = cc_data["threshold_warn"]
+		if (v is int or v is float) and int(v) >= 0:
+			config.cc_config["threshold_warn"] = int(v)
 	
 	if cc_data.has("threshold_fail"):
-		if cc_data["threshold_fail"] is int and cc_data["threshold_fail"] >= 0:
-			config.cc_config["threshold_fail"] = cc_data["threshold_fail"]
+		var v = cc_data["threshold_fail"]
+		if (v is int or v is float) and int(v) >= 0:
+			config.cc_config["threshold_fail"] = int(v)
 
 func _parse_cog_config(cog_data: Dictionary):
 	if cog_data.has("nesting_penalty"):
-		if cog_data["nesting_penalty"] is int and cog_data["nesting_penalty"] >= 0:
-			config.cog_config["nesting_penalty"] = cog_data["nesting_penalty"]
+		var v = cog_data["nesting_penalty"]
+		if (v is int or v is float) and int(v) >= 0:
+			config.cog_config["nesting_penalty"] = int(v)
 	
 	if cog_data.has("threshold_warn"):
-		if cog_data["threshold_warn"] is int and cog_data["threshold_warn"] >= 0:
-			config.cog_config["threshold_warn"] = cog_data["threshold_warn"]
+		var v = cog_data["threshold_warn"]
+		if (v is int or v is float) and int(v) >= 0:
+			config.cog_config["threshold_warn"] = int(v)
 	
 	if cog_data.has("threshold_fail"):
-		if cog_data["threshold_fail"] is int and cog_data["threshold_fail"] >= 0:
-			config.cog_config["threshold_fail"] = cog_data["threshold_fail"]
+		var v = cog_data["threshold_fail"]
+		if (v is int or v is float) and int(v) >= 0:
+			config.cog_config["threshold_fail"] = int(v)
 
 func _parse_parser_config(parser_data: Dictionary):
 	if parser_data.has("prefer_ast_when_available"):

@@ -1,0 +1,44 @@
+{
+	"include": [
+		"res://tests/fixtures/**/*.gd"
+	],
+	"exclude": [
+		"res://.git/**",
+		"res://.godot/**",
+		"res://addons/**",
+		"res://cli/**",
+		"res://tests/test_*.gd",
+		"res://tests/verify_*.gd",
+		"res://tests/validate_*.gd",
+		"res://tests/analyze_*.gd",
+		"res://tests/ci_test.gd",
+		"res://tests/corpus_regression.gd",
+		"res://tests/file_helper_*.gd"
+	],
+	"cc": {
+		"count_logical_operators": true,
+		"threshold_warn": 50,
+		"threshold_fail": 200
+	},
+	"cog": {
+		"nesting_penalty": 1,
+		"threshold_warn": 50,
+		"threshold_fail": 200
+	},
+	"report": {
+		"formats": ["json", "csv"],
+		"output_path": "ci_report.json",
+		"csv_output_path": "ci_report.csv",
+		"auto_export": false
+	},
+	"performance": {
+		"enable_caching": false
+	},
+	"telemetry": {
+		"enable_anonymous_reporting": false
+	},
+	"logging": {
+		"enable_console": true,
+		"level": "info"
+	}
+}

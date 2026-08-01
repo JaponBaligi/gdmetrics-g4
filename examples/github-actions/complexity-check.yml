@@ -1,0 +1,41 @@
+# Consumer template: fail PRs when CC / C-COG exceed complexity_config.json thresholds.
+# Prerequisites: copy addons/gdscript_complexity/ and cli/ into your Godot 4 project,
+# and add complexity_config.json (see complexity_config.example.json).
+
+name: GDMetrics complexity gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  complexity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v1
+        with:
+          version: "4.2.0"
+          include-templates: false
+          use-dotnet: false
+
+      - name: Analyze and fail on threshold_fail
+        run: |
+          godot --headless --script cli/analyze_project.gd -- \
+            --project-path . \
+            --output complexity_report.json \
+            --csv-output complexity_report.csv
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdmetrics-report
+          path: |
+            complexity_report.json
+            complexity_report.csv
+          if-no-files-found: ignore

@@ -23,9 +23,9 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 - `include`: file patterns to analyze (default: `["res://**/*.gd"]`)
 - `exclude`: file patterns to skip
 - `cc.count_logical_operators`: include logical operators in CC
-- `cc.threshold_warn` / `cc.threshold_fail`: CC thresholds
+- `cc.threshold_warn` / `cc.threshold_fail`: CC thresholds (`threshold_fail` → CLI exit 1)
 - `cog.nesting_penalty`: per-nesting penalty
-- `cog.threshold_warn` / `cog.threshold_fail`: C-COG thresholds
+- `cog.threshold_warn` / `cog.threshold_fail`: C-COG thresholds (`threshold_fail` → CLI exit 1)
 - `parser.parser_mode`: `fast`, `balanced`, or `thorough`
 - `parser.max_expected_errors_per_100_lines`: parse tolerance
 - `report.formats`: `json`, `csv`
@@ -47,8 +47,11 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 
 ### CLI
 ```bash
-godot --headless --script cli/ci_test.gd -- --project-path . --output report.json --csv-output report.csv
+godot --headless --script cli/analyze_project.gd -- \
+  --project-path . --output report.json --csv-output report.csv
 ```
+
+Exit codes: `0` ok, `1` threshold_fail breach, `2` tool error. See `docs/DISTRIBUTION.md`.
 
 ### Auto export
 Enable `report.auto_export` and specify formats:

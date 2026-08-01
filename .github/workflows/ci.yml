@@ -30,7 +30,9 @@ jobs:
       - name: Run CI analysis
         run: |
           godot --headless --version
-          godot --headless --script tests/ci_test.gd -- \
+          cp complexity_config.ci.json complexity_config.json
+          # Uses complexity_config.ci.json (fixtures) with high fail thresholds for dogfood.
+          godot --headless --script cli/analyze_project.gd -- \
             --project-path . \
             --output ci_report.json \
             --csv-output ci_report.csv
@@ -40,6 +42,9 @@ jobs:
 
       - name: Edge cases
         run: godot --headless --script tests/test_edge_cases.gd
+
+      - name: Threshold gate
+        run: godot --headless --script tests/test_threshold_gate.gd
 
       - name: Validate confidence gate
         run: godot --headless --script tests/validate_confidence.gd -- \
@@ -70,6 +75,8 @@ jobs:
           mkdir -p dist
           zip -r dist/gdmetrics-${{ github.ref_name }}.zip \
             addons/gdscript_complexity \
+            cli \
+            examples \
             docs \
             README.md \
             LICENSE \

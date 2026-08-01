@@ -73,8 +73,15 @@ For detailed compatibility information, see [docs/COMPATIBILITY.md](docs/COMPATI
 ### CLI Mode
 
 ```bash
-godot --headless --script cli/ci_test.gd -- --project-path . --output report.json --csv-output report.csv
+godot --headless --script cli/analyze_project.gd -- \
+  --project-path . --output report.json --csv-output report.csv
 ```
+
+Exit codes: `0` ok, `1` `threshold_fail` breach (or no successful files), `2` tool/path error.  
+Use `--no-fail-on-threshold` to always exit 0/2 (report only).  
+`tests/ci_test.gd` remains a thin wrapper around this script.
+
+Copy-paste GitHub Actions: [`examples/github-actions/complexity-check.yml`](examples/github-actions/complexity-check.yml).
 
 The report will be written to `report.json`.
 
@@ -94,42 +101,35 @@ High complexity files: 3
 
 ### JSON Report Format
 
+Actual generator shape (see `report_generator.gd`):
+
 ```json
 {
-  "project": "my_project",
-  "engine_version": "4.2.1",
-  "timestamp": "2026-01-26T10:30:00Z",
-  "totals": {
-    "files_analyzed": 42,
-    "total_cc": 342,
-    "total_cog": 725,
-    "average_cc": 8.14,
-    "average_cog": 17.26
+  "version": "1.0",
+  "timestamp": "2026-01-26T10:30:00",
+  "project": {
+    "total_files": 42,
+    "successful_files": 42,
+    "failed_files": 0,
+    "totals": { "cc": 342, "cog": 725 },
+    "averages": { "cc": 8.14, "cog": 17.26, "confidence": 0.93 }
   },
-  "files": [
-    {
-      "file": "res://player.gd",
-      "confidence": 0.93,
-      "file_cc": 16,
-      "file_cog": 24,
-      "functions": [
-        {
-          "name": "_process",
-          "line": 45,
-          "cc": 8,
-          "cog": 12
-        }
-      ]
-    }
-  ]
+  "worst_offenders": {
+    "cc": [],
+    "cog": []
+  },
+  "files": [],
+  "errors": []
 }
 ```
 
+CSV rows include per-function `CC` and `C-COG`.
+
 ### Usage Examples
 
-- Analyze a project and export JSON + CSV:
+- Analyze a project and export JSON + CSV (fails CI when thresholds exceeded):
 ```bash
-godot --headless --script cli/ci_test.gd -- --project-path . --output report.json --csv-output report.csv
+godot --headless --script cli/analyze_project.gd -- --project-path . --output report.json --csv-output report.csv
 ```
 - Enable auto export in config:
 ```json
@@ -414,11 +414,11 @@ Confidence scores estimate parse reliability. Use `tests/validate_confidence.gd`
 - Untagged commits may contain experimental features
 
 **Current Release Status:**
-- **v0.1.3** is labeled as **early release / pre-stable**
-- Version 0.1.3 is ready for use but subject to change
-- **Breaking changes may occur before v1.0.0** (see [docs/BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md))
+- **v0.2.0** is labeled as **early release / pre-stable**
+- Versioning follows [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`); see [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)
+- **Breaking changes may occur before PROUD 1.0.0** (see [docs/BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md))
 - Configuration, CLI arguments, and output formats may change
-- Upgrades between 0.x versions may require manual adjustments
+- Upgrades between 0.x DEFAULT releases may require manual adjustments
 
 ### Distribution Channels
 
@@ -433,39 +433,44 @@ Confidence scores estimate parse reliability. Use `tests/validate_confidence.gd`
 
 **Package Contents:**
 - Source code of `addons/gdscript_complexity/`
-- Documentation files (README, USER_GUIDE, TECHNICAL, etc.)
+- `cli/` (project analysis entrypoint)
+- `examples/github-actions/` consumer workflow template
+- Documentation files (README, USER_GUIDE, TECHNICAL, DISTRIBUTION, etc.)
 - Example configuration files
 - **No prebuilt binaries, DLLs, or OS-specific artifacts included**
 
 ### Version Stability Timeline
 
-- **v0.x (current)**: Rapid iteration; breaking changes possible
-- **v1.0 (planned)**: Stable API, configuration, and output formats
-- **v2.0+ (future)**: Major feature additions with backward compatibility
+- **0.x (current)**: Pride DEFAULT/SHAME releases; breaking changes possible
+- **1.0.0 (planned PROUD)**: Stable API, configuration, and output formats
+- **2.0.0+ (future PROUD)**: Major feature additions after a proud blank slate
 
 For detailed breaking changes, see the [BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md) log.
 
 ## Roadmap
 
-### Current Release (v0.1.3)
+Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). One tagged release at a time.
+
+### Current Release (v0.2.0 — DEFAULT)
 - ✅ CC and C-COG metrics
 - ✅ JSON and CSV export
 - ✅ Godot 4.x support
 - ✅ Caching system
-- ✅ CLI integration
+- ✅ CLI integration (`cli/analyze_project.gd`)
 - ✅ Match/`when`, lambdas, multiline strings, edge-case corpus gates
+- ✅ `threshold_fail` CI exit codes + breach summary
+- ✅ Consumer GitHub Actions template (`examples/github-actions/`)
 
-### Planned Features
-- 🔲 HTML report generation with charts
-- 🔲 Real-time complexity warnings in editor
-- 🔲 GitHub Actions integration template
-- 🔲 Complexity trend tracking over time
-- 🔲 Custom metric plugins
+### Planned (later DEFAULT / PROUD — not started until prior tag ships)
+- 🔲 0.3.0 — HTML report + dock secondary metrics
+- 🔲 0.4.0 — Complexity trend tracking
+- 🔲 1.0.0 PROUD — schema freeze, shared-core, g4 annotations
+- 🔲 Custom metric plugins (after 1.0)
 
 ### Under Consideration
 - Halstead Metrics
 - Maintainability Index calculation
-- IDE integration for other engines (Godot 5.x when stable)
+- Godot 5.x when stable
 
 ## License
 
