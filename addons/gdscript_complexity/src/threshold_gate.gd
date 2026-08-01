@@ -1,6 +1,6 @@
 extends Object
 
-# Evaluate per-function CC / C-COG against config thresholds.
+# Evaluate per-function CC / C-COG and file-level structural metrics against config thresholds.
 # Used by cli/analyze_project.gd and tests.
 
 func evaluate(project_result, config) -> Dictionary:
@@ -8,6 +8,14 @@ func evaluate(project_result, config) -> Dictionary:
 	var cc_fail = int(config.cc_config.get("threshold_fail", 20))
 	var cog_warn = int(config.cog_config.get("threshold_warn", 15))
 	var cog_fail = int(config.cog_config.get("threshold_fail", 30))
+
+	var structural = config.structural_config
+	var nest_warn = int(structural.get("nesting_warn", 3))
+	var nest_fail = int(structural.get("nesting_fail", 5))
+	var params_warn = int(structural.get("params_warn", 4))
+	var params_fail = int(structural.get("params_fail", 8))
+	var loc_warn = int(structural.get("loc_warn", 300))
+	var loc_fail = int(structural.get("loc_fail", 500))
 
 	var warnings = []
 	var failures = []
@@ -35,6 +43,11 @@ func evaluate(project_result, config) -> Dictionary:
 			elif cog_value >= cog_warn:
 				warnings.append(_row(result.file_path, func_name, line, "C-COG", cog_value, cog_warn))
 
+		_check_structural(
+			result, warnings, failures,
+			nest_warn, nest_fail, params_warn, params_fail, loc_warn, loc_fail
+		)
+
 	return {
 		"warnings": warnings,
 		"failures": failures,
@@ -43,12 +56,20 @@ func evaluate(project_result, config) -> Dictionary:
 		"cc_warn": cc_warn,
 		"cc_fail": cc_fail,
 		"cog_warn": cog_warn,
-		"cog_fail": cog_fail
+		"cog_fail": cog_fail,
+		"nest_warn": nest_warn,
+		"nest_fail": nest_fail,
+		"params_warn": params_warn,
+		"params_fail": params_fail,
+		"loc_warn": loc_warn,
+		"loc_fail": loc_fail
 	}
 
 func print_summary(gate: Dictionary) -> void:
-	print("Thresholds: CC warn=%d fail=%d | C-COG warn=%d fail=%d" % [
-		gate["cc_warn"], gate["cc_fail"], gate["cog_warn"], gate["cog_fail"]
+	print("Thresholds: CC warn=%d fail=%d | C-COG warn=%d fail=%d | NEST warn=%d fail=%d | PARAMS warn=%d fail=%d | LOC warn=%d fail=%d" % [
+		gate["cc_warn"], gate["cc_fail"], gate["cog_warn"], gate["cog_fail"],
+		gate["nest_warn"], gate["nest_fail"], gate["params_warn"], gate["params_fail"],
+		gate["loc_warn"], gate["loc_fail"]
 	])
 	if gate["warn_count"] > 0:
 		print("WARN breaches (%d):" % gate["warn_count"])
@@ -64,6 +85,37 @@ func print_summary(gate: Dictionary) -> void:
 			])
 	if gate["warn_count"] == 0 and gate["fail_count"] == 0:
 		print("No threshold breaches.")
+
+func _check_structural(
+	result,
+	warnings: Array,
+	failures: Array,
+	nest_warn: int,
+	nest_fail: int,
+	params_warn: int,
+	params_fail: int,
+	loc_warn: int,
+	loc_fail: int
+) -> void:
+	var file_path = result.file_path
+	var nest = int(result.max_nesting_depth)
+	var params = int(result.max_params)
+	var loc = int(result.loc_code)
+
+	if nest >= nest_fail:
+		failures.append(_row(file_path, "(file)", 1, "NEST", nest, nest_fail))
+	elif nest >= nest_warn:
+		warnings.append(_row(file_path, "(file)", 1, "NEST", nest, nest_warn))
+
+	if params >= params_fail:
+		failures.append(_row(file_path, "(file)", 1, "PARAMS", params, params_fail))
+	elif params >= params_warn:
+		warnings.append(_row(file_path, "(file)", 1, "PARAMS", params, params_warn))
+
+	if loc >= loc_fail:
+		failures.append(_row(file_path, "(file)", 1, "LOC", loc, loc_fail))
+	elif loc >= loc_warn:
+		warnings.append(_row(file_path, "(file)", 1, "LOC", loc, loc_warn))
 
 func _row(file_path: String, func_name: String, line: int, metric: String, value: int, limit: int) -> Dictionary:
 	return {

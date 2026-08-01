@@ -62,6 +62,7 @@ func _setup_ui():
 	var popup = export_button.get_popup()
 	popup.add_item("Export JSON")
 	popup.add_item("Export CSV")
+	popup.add_item("Export HTML")
 	popup.id_pressed.connect(_on_export_menu_selected)
 	button_row.add_child(export_button)
 
@@ -86,20 +87,29 @@ func _setup_ui():
 	results_tree.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	results_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	results_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	results_tree.columns = 4
+	results_tree.columns = 7
 	results_tree.set_column_titles_visible(true)
 	results_tree.set_column_title(0, "File/Function")
 	results_tree.set_column_title(1, "CC")
 	results_tree.set_column_title(2, "C-COG")
 	results_tree.set_column_title(3, "Confidence")
+	results_tree.set_column_title(4, "Nest")
+	results_tree.set_column_title(5, "Params")
+	results_tree.set_column_title(6, "LOC")
 	results_tree.set_column_expand(0, true)
 	results_tree.set_column_expand(1, false)
 	results_tree.set_column_expand(2, false)
 	results_tree.set_column_expand(3, false)
+	results_tree.set_column_expand(4, false)
+	results_tree.set_column_expand(5, false)
+	results_tree.set_column_expand(6, false)
 	results_tree.set_column_custom_minimum_width(0, 220)
-	results_tree.set_column_custom_minimum_width(1, 60)
-	results_tree.set_column_custom_minimum_width(2, 60)
-	results_tree.set_column_custom_minimum_width(3, 80)
+	results_tree.set_column_custom_minimum_width(1, 50)
+	results_tree.set_column_custom_minimum_width(2, 55)
+	results_tree.set_column_custom_minimum_width(3, 70)
+	results_tree.set_column_custom_minimum_width(4, 45)
+	results_tree.set_column_custom_minimum_width(5, 55)
+	results_tree.set_column_custom_minimum_width(6, 45)
 	results_tree.item_activated.connect(_on_item_activated)
 	vbox.add_child(results_tree)
 	
@@ -153,7 +163,11 @@ func _on_config_pressed():
 	config_requested.emit()
 
 func _on_export_menu_selected(id: int):
-	var format = "json" if id == 0 else "csv"
+	var format = "json"
+	if id == 1:
+		format = "csv"
+	elif id == 2:
+		format = "html"
 	export_requested.emit(format)
 
 func _on_open_pressed():
@@ -185,7 +199,15 @@ func clear_results():
 		results_tree.clear()
 		tree_root = null
 
-func add_file_result(file_path: String, cc: int, cog: int, confidence: float):
+func add_file_result(
+	file_path: String,
+	cc: int,
+	cog: int,
+	confidence: float,
+	nesting: int = 0,
+	params: int = 0,
+	loc: int = 0
+):
 	if results_tree == null:
 		return
 	
@@ -199,6 +221,9 @@ func add_file_result(file_path: String, cc: int, cog: int, confidence: float):
 	file_item.set_text(1, str(cc))
 	file_item.set_text(2, str(cog))
 	file_item.set_text(3, "%.2f" % confidence)
+	file_item.set_text(4, str(nesting))
+	file_item.set_text(5, str(params))
+	file_item.set_text(6, str(loc))
 	file_item.set_metadata(0, {"script_path": file_path, "line": 1})
 	_align_numeric_columns(file_item)
 	file_item.set_selectable(0, true)
@@ -214,6 +239,9 @@ func add_function_result(parent_item: TreeItem, func_name: String, cc: int, cog:
 	func_item.set_text(1, str(cc))
 	func_item.set_text(2, str(cog))
 	func_item.set_text(3, "-")
+	func_item.set_text(4, "-")
+	func_item.set_text(5, "-")
+	func_item.set_text(6, "-")
 	func_item.set_metadata(0, {"script_path": script_path, "line": max(line, 1)})
 	_align_numeric_columns(func_item)
 	func_item.set_selectable(0, true)
@@ -235,9 +263,8 @@ func _align_numeric_columns(item: TreeItem):
 	if item == null:
 		return
 	if item.has_method("set_text_alignment"):
-		item.call("set_text_alignment", 1, HORIZONTAL_ALIGNMENT_RIGHT)
-		item.call("set_text_alignment", 2, HORIZONTAL_ALIGNMENT_RIGHT)
-		item.call("set_text_alignment", 3, HORIZONTAL_ALIGNMENT_RIGHT)
+		for col in range(1, 7):
+			item.call("set_text_alignment", col, HORIZONTAL_ALIGNMENT_RIGHT)
 
 func set_analyze_button_enabled(enabled: bool):
 	if analyze_button != null:

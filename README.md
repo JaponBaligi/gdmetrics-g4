@@ -414,7 +414,7 @@ Confidence scores estimate parse reliability. Use `tests/validate_confidence.gd`
 - Untagged commits may contain experimental features
 
 **Current Release Status:**
-- **v0.2.0** is labeled as **early release / pre-stable**
+- **v0.3.0** is labeled as **early release / pre-stable**
 - Versioning follows [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`); see [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)
 - **Breaking changes may occur before PROUD 1.0.0** (see [docs/BREAKING_CHANGES.md](docs/BREAKING_CHANGES.md))
 - Configuration, CLI arguments, and output formats may change
@@ -451,9 +451,13 @@ For detailed breaking changes, see the [BREAKING_CHANGES.md](docs/BREAKING_CHANG
 
 Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). One tagged release at a time.
 
-### Current Release (v0.2.0 — DEFAULT)
+### Current Release (v0.3.0 — DEFAULT)
 - ✅ CC and C-COG metrics
 - ✅ JSON and CSV export
+- ✅ HTML report (CLI `--html-output` + dock Export HTML)
+- ✅ Dock Nest / Params / LOC columns
+- ✅ Structural threshold gates (NEST / PARAMS / LOC)
+- ✅ JSON per-function `"cc"` field
 - ✅ Godot 4.x support
 - ✅ Caching system
 - ✅ CLI integration (`cli/analyze_project.gd`)
@@ -462,7 +466,6 @@ Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). 
 - ✅ Consumer GitHub Actions template (`examples/github-actions/`)
 
 ### Planned (later DEFAULT / PROUD — not started until prior tag ships)
-- 🔲 0.3.0 — HTML report + dock secondary metrics
 - 🔲 0.4.0 — Complexity trend tracking
 - 🔲 1.0.0 PROUD — schema freeze, shared-core, g4 annotations
 - 🔲 Custom metric plugins (after 1.0)

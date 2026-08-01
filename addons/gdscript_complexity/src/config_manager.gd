@@ -11,6 +11,7 @@ class Config:
 	var exclude_patterns: Array = []
 	var cc_config: Dictionary = {}
 	var cog_config: Dictionary = {}
+	var structural_config: Dictionary = {}
 	var parser_config: Dictionary = {}
 	var report_config: Dictionary = {}
 	var performance_config: Dictionary = {}
@@ -39,6 +40,14 @@ class Config:
 			"threshold_warn": 15,
 			"threshold_fail": 30
 		}
+		structural_config = {
+			"nesting_warn": 3,
+			"nesting_fail": 5,
+			"params_warn": 4,
+			"params_fail": 8,
+			"loc_warn": 300,
+			"loc_fail": 500
+		}
 		parser_config = {
 			"prefer_ast_when_available": false,
 			"fallback_to_heuristic": true,
@@ -50,6 +59,7 @@ class Config:
 			"formats": ["json"],
 			"output_path": "res://complexity_report.json",
 			"csv_output_path": "res://complexity_report.csv",
+			"html_output_path": "res://complexity_report.html",
 			"auto_export": false,
 			"annotate_editor": false
 		}
@@ -155,6 +165,12 @@ func _parse_config(data: Dictionary):
 		else:
 			errors.append(_format_error("CONFIG_INVALID_TYPE", "Config 'cog' must be an object"))
 	
+	if data.has("structural"):
+		if data["structural"] is Dictionary:
+			_parse_structural_config(data["structural"])
+		else:
+			errors.append(_format_error("CONFIG_INVALID_TYPE", "Config 'structural' must be an object"))
+	
 	if data.has("parser"):
 		if data["parser"] is Dictionary:
 			_parse_parser_config(data["parser"])
@@ -216,6 +232,13 @@ func _parse_cog_config(cog_data: Dictionary):
 		if (v is int or v is float) and int(v) >= 0:
 			config.cog_config["threshold_fail"] = int(v)
 
+func _parse_structural_config(structural_data: Dictionary):
+	for key in ["nesting_warn", "nesting_fail", "params_warn", "params_fail", "loc_warn", "loc_fail"]:
+		if structural_data.has(key):
+			var v = structural_data[key]
+			if (v is int or v is float) and int(v) >= 0:
+				config.structural_config[key] = int(v)
+
 func _parse_parser_config(parser_data: Dictionary):
 	if parser_data.has("prefer_ast_when_available"):
 		if parser_data["prefer_ast_when_available"] is bool:
@@ -263,6 +286,10 @@ func _parse_report_config(report_data: Dictionary):
 	if report_data.has("csv_output_path"):
 		if report_data["csv_output_path"] is String:
 			config.report_config["csv_output_path"] = report_data["csv_output_path"]
+	
+	if report_data.has("html_output_path"):
+		if report_data["html_output_path"] is String:
+			config.report_config["html_output_path"] = report_data["html_output_path"]
 	
 	if report_data.has("auto_export"):
 		if report_data["auto_export"] is bool:

@@ -20,6 +20,14 @@
 		"threshold_warn": 15,
 		"threshold_fail": 30
 	},
+	"structural": {
+		"nesting_warn": 3,
+		"nesting_fail": 5,
+		"params_warn": 4,
+		"params_fail": 8,
+		"loc_warn": 300,
+		"loc_fail": 500
+	},
 	"parser": {
 		"parser_mode": "balanced",
 		"confidence_weights": {
@@ -30,9 +38,10 @@
 		}
 	},
 	"report": {
-		"formats": ["json", "csv"],
+		"formats": ["json", "csv", "html"],
 		"output_path": "res://complexity_report.json",
 		"csv_output_path": "res://complexity_report.csv",
+		"html_output_path": "res://complexity_report.html",
 		"auto_export": false
 	},
 	"performance": {

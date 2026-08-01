@@ -112,12 +112,18 @@ func _format_file_results(file_results: Array) -> Array:
 			"max_params": result.max_params
 		}
 		if result.success:
-			file_data["functions"] = _format_functions(result.functions, result.per_function_cog)
+			file_data["functions"] = _format_functions(
+				result.functions, result.per_function_cc, result.per_function_cog
+			)
 			file_data["classes"] = _format_classes(result.classes)
 		files.append(file_data)
 	return files
 
-func _format_functions(functions: Array, per_function_cog: Dictionary = {}) -> Array:
+func _format_functions(
+	functions: Array,
+	per_function_cc: Dictionary = {},
+	per_function_cog: Dictionary = {}
+) -> Array:
 	var func_list = []
 	for func_info in functions:
 		var func_data = {
@@ -128,6 +134,8 @@ func _format_functions(functions: Array, per_function_cog: Dictionary = {}) -> A
 			"parameters": func_info.parameters.size(),
 			"return_type": func_info.return_type if func_info.return_type != "" else "void"
 		}
+		if per_function_cc.has(func_info.name):
+			func_data["cc"] = per_function_cc[func_info.name]
 		if per_function_cog.has(func_info.name):
 			func_data["cog"] = per_function_cog[func_info.name]
 		func_list.append(func_data)
@@ -167,6 +175,128 @@ func write_csv(csv_text: String, output_path: String) -> bool:
 	file.store_string(csv_text)
 	file = null
 	return true
+
+func generate_html(project_result, config) -> String:
+	var ts = Time.get_datetime_string_from_system()
+	var parts: Array = []
+	parts.append("<!DOCTYPE html>")
+	parts.append("<html lang=\"en\"><head><meta charset=\"utf-8\">")
+	parts.append("<title>GDMetrics Complexity Report</title>")
+	parts.append("<style>")
+	parts.append("body{font-family:system-ui,sans-serif;margin:1.5rem;color:#222;background:#fafafa}")
+	parts.append("h1,h2{margin:0.6rem 0} table{border-collapse:collapse;width:100%;margin:1rem 0;background:#fff}")
+	parts.append("th,td{border:1px solid #ccc;padding:0.4rem 0.6rem;text-align:left}")
+	parts.append("th{background:#eee} .num{text-align:right} .totals{display:flex;gap:1.5rem;flex-wrap:wrap}")
+	parts.append(".totals div{background:#fff;border:1px solid #ccc;padding:0.75rem 1rem;min-width:8rem}")
+	parts.append(".chart{margin:1rem 0;background:#fff;border:1px solid #ccc;padding:1rem;overflow-x:auto}")
+	parts.append("</style></head><body>")
+	parts.append("<h1>GDMetrics Complexity Report</h1>")
+	parts.append("<p>Generated %s</p>" % _html_escape(ts))
+	parts.append("<div class=\"totals\">")
+	parts.append("<div><strong>Files</strong><br>%d / %d ok</div>" % [
+		project_result.successful_files, project_result.total_files
+	])
+	parts.append("<div><strong>Total CC</strong><br>%d</div>" % project_result.total_cc)
+	parts.append("<div><strong>Total C-COG</strong><br>%d</div>" % project_result.total_cog)
+	parts.append("<div><strong>Avg CC</strong><br>%.2f</div>" % project_result.average_cc)
+	parts.append("<div><strong>Avg C-COG</strong><br>%.2f</div>" % project_result.average_cog)
+	parts.append("</div>")
+
+	parts.append("<h2>Top C-COG files</h2>")
+	parts.append("<div class=\"chart\">")
+	parts.append(_svg_cog_bars(project_result.worst_cog_files))
+	parts.append("</div>")
+
+	parts.append("<h2>Worst offenders (CC)</h2>")
+	parts.append(_offender_table(project_result.worst_cc_files, "cc"))
+	parts.append("<h2>Worst offenders (C-COG)</h2>")
+	parts.append(_offender_table(project_result.worst_cog_files, "cog"))
+
+	parts.append("<h2>Per-file metrics</h2>")
+	parts.append("<table><thead><tr>")
+	parts.append("<th>File</th><th class=\"num\">CC</th><th class=\"num\">C-COG</th>")
+	parts.append("<th class=\"num\">Nest</th><th class=\"num\">Params</th><th class=\"num\">LOC</th>")
+	parts.append("<th class=\"num\">Confidence</th></tr></thead><tbody>")
+	for result in project_result.file_results:
+		if not result.success:
+			continue
+		parts.append("<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%d</td>" % [
+			_html_escape(str(result.file_path)), result.cc, result.cog
+		])
+		parts.append("<td class=\"num\">%d</td><td class=\"num\">%d</td><td class=\"num\">%d</td>" % [
+			result.max_nesting_depth, result.max_params, result.loc_code
+		])
+		parts.append("<td class=\"num\">%.2f</td></tr>" % result.confidence)
+	parts.append("</tbody></table>")
+	parts.append("</body></html>")
+	return "\n".join(parts)
+
+func write_html(html_text: String, output_path: String) -> bool:
+	output_path = _sanitize_path(output_path)
+	if not _check_output_overwrite(output_path):
+		return false
+	var file = FileAccess.open(output_path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(html_text)
+	file = null
+	return true
+
+func _html_escape(text: String) -> String:
+	return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+func _offender_table(file_results: Array, metric: String) -> String:
+	var rows: Array = []
+	rows.append("<table><thead><tr><th>File</th><th class=\"num\">%s</th><th class=\"num\">Confidence</th></tr></thead><tbody>" % metric.to_upper())
+	for result in file_results:
+		if not result.success:
+			continue
+		var value = result.cc if metric == "cc" else result.cog
+		rows.append("<tr><td>%s</td><td class=\"num\">%d</td><td class=\"num\">%.2f</td></tr>" % [
+			_html_escape(str(result.file_path)), value, result.confidence
+		])
+	rows.append("</tbody></table>")
+	return "\n".join(rows)
+
+func _svg_cog_bars(file_results: Array) -> String:
+	var items: Array = []
+	for result in file_results:
+		if result.success:
+			items.append(result)
+		if items.size() >= 10:
+			break
+	if items.size() == 0:
+		return "<p>No data</p>"
+	var max_cog = 1
+	for result in items:
+		if result.cog > max_cog:
+			max_cog = result.cog
+	var bar_h = 18
+	var gap = 6
+	var label_w = 220
+	var chart_w = 480
+	var height = items.size() * (bar_h + gap) + 10
+	var parts: Array = []
+	parts.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">" % [
+		label_w + chart_w + 60, height, label_w + chart_w + 60, height
+	])
+	var i = 0
+	for result in items:
+		var y = i * (bar_h + gap) + 4
+		var w = int(float(result.cog) / float(max_cog) * chart_w)
+		var name = str(result.file_path).get_file()
+		parts.append("<text x=\"0\" y=\"%d\" font-size=\"12\" dominant-baseline=\"middle\">%s</text>" % [
+			y + bar_h / 2, _html_escape(name)
+		])
+		parts.append("<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"#4a90d9\"/>" % [
+			label_w, y, max(w, 1), bar_h
+		])
+		parts.append("<text x=\"%d\" y=\"%d\" font-size=\"12\" dominant-baseline=\"middle\">%d</text>" % [
+			label_w + w + 6, y + bar_h / 2, result.cog
+		])
+		i += 1
+	parts.append("</svg>")
+	return "\n".join(parts)
 
 func _sanitize_path(path: String) -> String:
 	if path.length() == 0:

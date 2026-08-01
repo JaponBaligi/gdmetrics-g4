@@ -259,14 +259,23 @@ func _add_file_result(file_result):
 		file_result.file_path,
 		file_result.cc,
 		file_result.cog,
-		file_result.confidence
+		file_result.confidence,
+		file_result.max_nesting_depth,
+		file_result.max_params,
+		file_result.loc_code
 	)
 	
-	if file_item != null and file_result.per_function_cog.size() > 0:
+	if file_item != null and file_result.functions.size() > 0:
 		for func_info in file_result.functions:
+			var cc = 0
+			var cog = 0
+			if file_result.per_function_cc.has(func_info.name):
+				cc = file_result.per_function_cc[func_info.name]
 			if file_result.per_function_cog.has(func_info.name):
-				var cog = file_result.per_function_cog[func_info.name]
-				dock_panel.add_function_result(file_item, func_info.name, 0, cog, file_result.file_path, func_info.start_line)
+				cog = file_result.per_function_cog[func_info.name]
+			dock_panel.add_function_result(
+				file_item, func_info.name, cc, cog, file_result.file_path, func_info.start_line
+			)
 	
 	if annotation_manager != null and config_manager != null:
 		var config = config_manager.get_config()
@@ -345,6 +354,10 @@ func _on_export_requested(format: String):
 		var csv_text = report_gen.generate_csv(last_project_result, config)
 		output_path = config.report_config.get("csv_output_path", "res://complexity_report.csv")
 		ok = report_gen.write_csv(csv_text, output_path)
+	elif format == "html":
+		var html_text = report_gen.generate_html(last_project_result, config)
+		output_path = config.report_config.get("html_output_path", "res://complexity_report.html")
+		ok = report_gen.write_html(html_text, output_path)
 	else:
 		if dock_panel != null:
 			dock_panel.set_status("Unsupported export format: %s" % format)
@@ -397,6 +410,12 @@ func _auto_export_reports(project_result):
 		var csv_text = report_gen.generate_csv(project_result, config)
 		var csv_output = config.report_config.get("csv_output_path", "res://complexity_report.csv")
 		if not report_gen.write_csv(csv_text, csv_output):
+			failed = true
+	
+	if formats.has("html"):
+		var html_text = report_gen.generate_html(project_result, config)
+		var html_output = config.report_config.get("html_output_path", "res://complexity_report.html")
+		if not report_gen.write_html(html_text, html_output):
 			failed = true
 	
 	if dock_panel != null:

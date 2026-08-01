@@ -1,7 +1,7 @@
 # Project complexity analysis CLI (consumer entrypoint)
 # Run with:
 #   godot --headless --script cli/analyze_project.gd -- \
-#     --project-path . --output report.json --csv-output report.csv
+#     --project-path . --output report.json --csv-output report.csv --html-output report.html
 #
 # Exit codes:
 #   0 — analysis ok, no threshold_fail breaches
@@ -25,6 +25,7 @@ func _initialize():
 		parsed["project_path"],
 		parsed["output_path"],
 		parsed["csv_output_path"],
+		parsed["html_output_path"],
 		parsed["fail_on_threshold"]
 	)
 	call_deferred("quit", exit_code)
@@ -33,6 +34,7 @@ func _parse_args() -> Dictionary:
 	var project_path = "."
 	var output_path = "ci_report.json"
 	var csv_output_path = ""
+	var html_output_path = ""
 	var fail_on_threshold = true
 
 	var args = OS.get_cmdline_args()
@@ -57,6 +59,9 @@ func _parse_args() -> Dictionary:
 		elif arg == "--csv-output" and i + 1 < user_args.size():
 			csv_output_path = _sanitize_path(user_args[i + 1])
 			i += 2
+		elif arg == "--html-output" and i + 1 < user_args.size():
+			html_output_path = _sanitize_path(user_args[i + 1])
+			i += 2
 		elif arg == "--no-fail-on-threshold":
 			fail_on_threshold = false
 			i += 1
@@ -70,6 +75,7 @@ func _parse_args() -> Dictionary:
 		"project_path": project_path,
 		"output_path": output_path,
 		"csv_output_path": csv_output_path,
+		"html_output_path": html_output_path,
 		"fail_on_threshold": fail_on_threshold
 	}
 
@@ -93,7 +99,13 @@ func _check_output_overwrite(output_path: String) -> bool:
 			return false
 	return true
 
-func run_analysis(project_path: String, output_path: String, csv_output_path: String, fail_on_threshold: bool = true) -> int:
+func run_analysis(
+	project_path: String,
+	output_path: String,
+	csv_output_path: String,
+	html_output_path: String = "",
+	fail_on_threshold: bool = true
+) -> int:
 	print("Running project complexity analysis...")
 
 	project_path = _sanitize_path(project_path)
@@ -102,6 +114,8 @@ func run_analysis(project_path: String, output_path: String, csv_output_path: St
 	if not _check_output_overwrite(output_path):
 		return 2
 	if csv_output_path != "" and not _check_output_overwrite(csv_output_path):
+		return 2
+	if html_output_path != "" and not _check_output_overwrite(html_output_path):
 		return 2
 
 	print("Project path: %s" % project_path)
@@ -159,6 +173,21 @@ func run_analysis(project_path: String, output_path: String, csv_output_path: St
 			_cleanup(report_gen, batch_analyzer, version_adapter, config, default_config, project_result)
 			return 2
 		print("CSV report written to: %s" % csv_output_path)
+
+	var should_write_html = false
+	if html_output_path != "":
+		should_write_html = true
+	elif default_config.report_config.has("formats") and default_config.report_config["formats"].has("html"):
+		html_output_path = default_config.report_config.get("html_output_path", "complexity_report.html")
+		should_write_html = true
+
+	if should_write_html:
+		var html_text = report_gen.generate_html(project_result, default_config)
+		if not report_gen.write_html(html_text, html_output_path):
+			print("ERROR: Failed to write HTML report")
+			_cleanup(report_gen, batch_analyzer, version_adapter, config, default_config, project_result)
+			return 2
+		print("HTML report written to: %s" % html_output_path)
 
 	print("Total CC: %d" % project_result.total_cc)
 	print("Total C-COG: %d" % project_result.total_cog)

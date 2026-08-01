@@ -25,6 +25,14 @@
 		"threshold_warn": 50,
 		"threshold_fail": 200
 	},
+	"structural": {
+		"nesting_warn": 10,
+		"nesting_fail": 50,
+		"params_warn": 20,
+		"params_fail": 50,
+		"loc_warn": 2000,
+		"loc_fail": 10000
+	},
 	"report": {
 		"formats": ["json", "csv"],
 		"output_path": "ci_report.json",
