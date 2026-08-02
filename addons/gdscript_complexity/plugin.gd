@@ -57,7 +57,7 @@ func _enter_tree():
 	if annotation_manager.is_supported():
 		logger.log_message("info", "Editor annotations supported (%s)" % annotation_manager.get_annotation_api())
 	else:
-		logger.log_message("info", "Editor annotations not available, using console logging")
+		logger.log_message("info", "Editor gutter annotations unavailable on this build (enable report.annotate_editor for console warnings)")
 	
 	config_dialog = load("res://addons/gdscript_complexity/gd4/config_dialog.gd").new()
 	config_dialog.set_config_manager(config_manager)
@@ -145,7 +145,8 @@ func _unload_script_cache():
 		"res://addons/gdscript_complexity/gd4/async_analyzer.gd",
 		"res://addons/gdscript_complexity/gd4/annotation_manager.gd",
 		"res://addons/gdscript_complexity/gd4/dock_panel.gd",
-		"res://addons/gdscript_complexity/gd4/config_dialog.gd"
+		"res://addons/gdscript_complexity/gd4/config_dialog.gd",
+		"res://addons/gdscript_complexity/gd4/help_dialog.gd"
 	]
 	for path in paths:
 		_unload_cached(path)
@@ -226,6 +227,13 @@ func _on_analyze_requested():
 	if config == null:
 		push_error("[Plugin] ERROR: config is null!")
 		return
+
+	dock_panel.set_thresholds(
+		int(config.cc_config.get("threshold_warn", 10)),
+		int(config.cc_config.get("threshold_fail", 20)),
+		int(config.cog_config.get("threshold_warn", 15)),
+		int(config.cog_config.get("threshold_fail", 30))
+	)
 	
 	if _VERBOSE_TRACE: print("[Plugin] Calling async_analyzer.start_analysis...")
 	if _VERBOSE_TRACE: print("[Plugin] Using Godot 4.x path (deferred)")
@@ -257,7 +265,17 @@ func _on_file_analyzed(file_result):
 func _add_file_result(file_result):
 	if dock_panel == null or not file_result.success:
 		return
-	
+
+	var explainer = load(ADDON_SRC + "core/score_explainer.gd").new()
+	var file_why = ""
+	if explainer != null:
+		file_why = explainer.explain_file(
+			file_result.cc,
+			file_result.cog,
+			file_result.cc_breakdown,
+			file_result.cog_breakdown
+		)
+
 	var file_item = dock_panel.add_file_result(
 		file_result.file_path,
 		file_result.cc,
@@ -265,27 +283,46 @@ func _add_file_result(file_result):
 		file_result.confidence,
 		file_result.max_nesting_depth,
 		file_result.max_params,
-		file_result.loc_code
+		file_result.loc_code,
+		file_result.cc_breakdown,
+		file_result.cog_breakdown,
+		file_why
 	)
 	
 	if file_item != null and file_result.functions.size() > 0:
 		for func_info in file_result.functions:
 			var cc = 0
 			var cog = 0
+			var cc_bd = {}
+			var cog_bd = {}
 			if file_result.per_function_cc.has(func_info.name):
 				cc = file_result.per_function_cc[func_info.name]
 			if file_result.per_function_cog.has(func_info.name):
 				cog = file_result.per_function_cog[func_info.name]
+			if file_result.per_function_cc_breakdown.has(func_info.name):
+				cc_bd = file_result.per_function_cc_breakdown[func_info.name]
+			if file_result.per_function_cog_breakdown.has(func_info.name):
+				cog_bd = file_result.per_function_cog_breakdown[func_info.name]
+			var why = ""
+			if explainer != null:
+				why = explainer.explain_function(cc, cog, cc_bd, cog_bd)
+			var status_override = ""
+			if bool(func_info.ignored):
+				status_override = "Ignored"
+			elif bool(func_info.pinned) and dock_panel.readability_label(cc, cog) == "OK":
+				status_override = "Pinned"
 			dock_panel.add_function_result(
-				file_item, func_info.name, cc, cog, file_result.file_path, func_info.start_line
+				file_item, func_info.name, cc, cog, file_result.file_path, func_info.start_line,
+				cc_bd, cog_bd, why, status_override
 			)
 	
 	if annotation_manager != null and config_manager != null:
 		var config = config_manager.get_config()
-		var cc_fail = int(config.cc_config.get("threshold_fail", 20))
-		var cog_fail = int(config.cog_config.get("threshold_fail", 30))
-		# clear_first=false: analysis start already cleared; avoid flicker per file
-		annotation_manager.annotate_file_results(file_result, cc_fail, cog_fail, false)
+		if config.report_config.get("annotate_editor", false):
+			var cc_fail = int(config.cc_config.get("threshold_fail", 20))
+			var cog_fail = int(config.cog_config.get("threshold_fail", 30))
+			# clear_first=false: analysis start already cleared; avoid flicker per file
+			annotation_manager.annotate_file_results(file_result, cc_fail, cog_fail, false)
 
 func _on_analysis_complete(project_result):
 	if _VERBOSE_TRACE: print("[Plugin] _on_analysis_complete called")
@@ -294,9 +331,26 @@ func _on_analysis_complete(project_result):
 func _finalize_analysis(project_result):
 	if _VERBOSE_TRACE: print("[Plugin] _finalize_analysis called")
 	last_project_result = project_result
-	if dock_panel != null:
-		var status_msg = "Analysis complete: %d files, CC: %d, C-COG: %d" % [
+	var top_fix_count = 0
+	var trend_text = ""
+	var confidence_text = _plain_confidence(float(project_result.average_confidence))
+	if dock_panel != null and config_manager != null:
+		var config = config_manager.get_config()
+		var top_fixes = _build_top_fixes(project_result, config)
+		top_fix_count = top_fixes.size()
+		dock_panel.show_top_fixes(top_fixes)
+		if dock_panel.has_method("show_god_scripts"):
+			# Rollup first (never blocks). Churn uses git OS.execute — defer so Done isn't stuck.
+			var gods = _build_god_scripts_base(project_result, config)
+			dock_panel.show_god_scripts(gods)
+			call_deferred("_apply_churn_to_god_scripts", gods, config)
+		trend_text = _compute_trend_before_append(project_result, config)
+		if dock_panel.has_method("set_trend"):
+			dock_panel.set_trend(trend_text)
+		var status_msg = "Done: %d files. Top fixes: %d. Analyzer: %s. CC %d / C-COG %d" % [
 			project_result.successful_files,
+			top_fix_count,
+			confidence_text,
 			project_result.total_cc,
 			project_result.total_cog
 		]
@@ -307,14 +361,116 @@ func _finalize_analysis(project_result):
 		dock_panel.set_analyze_button_enabled(true)
 		dock_panel.set_cancel_button_enabled(false)
 		if _VERBOSE_TRACE: print("[Plugin] Analysis finalized successfully")
+	elif dock_panel != null:
+		dock_panel.set_status("Analysis complete")
+		dock_panel.show_progress(false)
+		dock_panel.set_analyze_button_enabled(true)
+		dock_panel.set_cancel_button_enabled(false)
 	
 	if config_manager != null:
 		var config = config_manager.get_config()
 		_append_history(project_result, config)
 		if config.report_config.get("auto_export", false):
 			call_deferred("_auto_export_reports", project_result)
-	else:
+	elif dock_panel == null:
 		push_error("[Plugin] ERROR: dock_panel is null in _finalize_analysis!")
+
+func _plain_confidence(avg: float) -> String:
+	if avg >= 0.90:
+		return "Very sure (%.2f)" % avg
+	if avg >= 0.75:
+		return "Pretty sure (%.2f)" % avg
+	if avg >= 0.60:
+		return "Somewhat sure (%.2f)" % avg
+	return "Not very sure (%.2f)" % avg
+
+func _compute_trend_before_append(project_result, config) -> String:
+	# Compare this run to the last history line (before we append).
+	var history = load(ADDON_SRC + "core/history_store.gd").new()
+	var gate = load(ADDON_SRC + "core/threshold_gate.gd").new()
+	var gate_result = gate.evaluate(project_result, config)
+	var fail_count = int(gate_result.get("fail_count", 0))
+	var fail_keys = gate_result.get("fail_keys", [])
+	var path = history.resolve_path(config)
+	var previous = history.load_previous(path)
+	var current = history.build_record(project_result, fail_count, fail_keys)
+	gate = null
+	if previous.size() == 0:
+		history = null
+		return "Trend: first saved run — run again later to see if the project got harder."
+	var diff = history.diff_records(current, previous)
+	var regress = history.is_regression(diff)
+	history = null
+	var d_cog = float(diff.get("delta_avg_cog", 0.0))
+	var prev_fail = int(diff.get("previous_fail_count", 0))
+	var cur_fail = int(diff.get("fail_count", 0))
+	var new_fails = int(diff.get("new_fail_count", 0))
+	var parts = []
+	if regress:
+		parts.append("Regression — project got harder")
+	if d_cog > 0.05:
+		parts.append("Avg C-COG up (%+.2f) — getting harder to read" % d_cog)
+	elif d_cog < -0.05:
+		parts.append("Avg C-COG down (%+.2f) — getting easier to read" % d_cog)
+	else:
+		parts.append("Avg C-COG about the same (%+.2f)" % d_cog)
+	if new_fails > 0:
+		parts.append("%d new Fix soon item(s)" % new_fails)
+	elif cur_fail > prev_fail:
+		parts.append("more Fix soon items (%d → %d)" % [prev_fail, cur_fail])
+	elif cur_fail < prev_fail:
+		parts.append("fewer Fix soon items (%d → %d)" % [prev_fail, cur_fail])
+	else:
+		parts.append("Fix soon count steady (%d)" % cur_fail)
+	var out = "Since last run: "
+	for i in range(parts.size()):
+		if i > 0:
+			out += "; "
+		out += str(parts[i])
+	return out
+
+func _build_top_fixes(project_result, config) -> Array:
+	var cc_warn = int(config.cc_config.get("threshold_warn", 10))
+	var cc_fail = int(config.cc_config.get("threshold_fail", 20))
+	var cog_warn = int(config.cog_config.get("threshold_warn", 15))
+	var cog_fail = int(config.cog_config.get("threshold_fail", 30))
+	if dock_panel != null and dock_panel.has_method("set_thresholds"):
+		dock_panel.set_thresholds(cc_warn, cc_fail, cog_warn, cog_fail)
+	var builder = load(ADDON_SRC + "core/top_fixes_builder.gd").new()
+	var entries = builder.build(project_result, config, 10)
+	builder = null
+	return entries
+
+func _build_god_scripts_base(project_result, config) -> Array:
+	var rollup = load(ADDON_SRC + "core/god_script_rollup.gd").new()
+	var entries = rollup.build(project_result, config, 5)
+	rollup = null
+	return entries
+
+func _apply_churn_to_god_scripts(entries: Array, config) -> void:
+	if dock_panel == null or not dock_panel.has_method("show_god_scripts"):
+		return
+	if entries.size() == 0:
+		return
+	var churn_script = load(ADDON_SRC + "core/churn_hotspots.gd")
+	if churn_script == null:
+		return
+	var churn = churn_script.new()
+	var hot = churn.enrich(entries, "res://", config, 5)
+	churn = null
+	if hot.size() == 0:
+		return
+	var by_path = {}
+	for h in hot:
+		by_path[str(h.get("script_path", ""))] = h
+	for entry in entries:
+		var path = str(entry.get("script_path", ""))
+		if by_path.has(path):
+			var overlay = by_path[path]
+			entry["label"] = "Hot"
+			entry["reason_text"] = str(overlay.get("reason_text", entry.get("reason_text", "")))
+			entry["churn_lines"] = int(overlay.get("churn_lines", 0))
+	dock_panel.show_god_scripts(entries)
 
 func _append_history(project_result, config) -> void:
 	if project_result == null or config == null:
@@ -323,7 +479,8 @@ func _append_history(project_result, config) -> void:
 	var gate = load(ADDON_SRC + "core/threshold_gate.gd").new()
 	var gate_result = gate.evaluate(project_result, config)
 	var fail_count = int(gate_result.get("fail_count", 0))
-	if history.append_from_result(project_result, config, fail_count):
+	var fail_keys = gate_result.get("fail_keys", [])
+	if history.append_from_result(project_result, config, fail_count, "", fail_keys):
 		if _VERBOSE_TRACE:
 			print("[Plugin] History appended")
 	gate = null
@@ -392,23 +549,36 @@ func _on_open_requested(script_path: String, line: int):
 
 func _open_script_at_line(script_path: String, line: int):
 	if script_path == "":
+		if dock_panel != null:
+			dock_panel.set_status("Nothing selected to open")
 		return
+	var target_line = max(line, 1)
 	var script_res = load(script_path)
 	if script_res == null:
+		if dock_panel != null:
+			dock_panel.set_status("Could not open: %s" % script_path.get_file())
 		return
 	var editor_interface = get_editor_interface()
 	if editor_interface == null:
 		return
+	# Switch main editor to Script tab (otherwise user stays on 2D/3D).
+	if editor_interface.has_method("set_main_screen_editor"):
+		editor_interface.call("set_main_screen_editor", "Script")
+	# Godot 4: edit_script(script, line, column, grab_focus) — line is 1-based.
 	if editor_interface.has_method("edit_script"):
-		editor_interface.call("edit_script", script_res, line)
-		return
-	if editor_interface.has_method("edit_resource"):
+		editor_interface.call("edit_script", script_res, target_line, 0, true)
+	elif editor_interface.has_method("edit_resource"):
 		editor_interface.call("edit_resource", script_res)
-		var script_editor = editor_interface.get_script_editor()
-		if script_editor != null and script_editor.has_method("goto_line"):
-			script_editor.call("goto_line", line)
-		elif script_editor != null and script_editor.has_method("set_line"):
-			script_editor.call("set_line", line)
+	var script_editor = editor_interface.get_script_editor()
+	if script_editor != null:
+		# goto_line is typically 0-based in the text editor API.
+		var zero_based = max(target_line - 1, 0)
+		if script_editor.has_method("goto_line"):
+			script_editor.call("goto_line", zero_based)
+		elif script_editor.has_method("goto_line_centered"):
+			script_editor.call("goto_line_centered", zero_based)
+	if dock_panel != null:
+		dock_panel.set_status("Opened %s:%d" % [script_path.get_file(), target_line])
 
 func _auto_export_reports(project_result):
 	if project_result == null or config_manager == null:
