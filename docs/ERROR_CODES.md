@@ -22,7 +22,7 @@ form `[CODE] message` for backwards compatibility.
 | `CONFIG_INVALID_ROOT` | warning | Config root is not an object |
 | `CONFIG_INVALID_TYPE` | warning | Config value has invalid type |
 | `CONFIG_INVALID_VALUE` | warning | Config value has invalid value |
-| `TOKEN_UNTERMINATED_COMMENT` | error | Unterminated multi-line comment |
+| `TOKEN_UNTERMINATED_COMMENT` | error | Reserved; GDScript has no `"""` comments (unused) |
 | `TOKEN_UNTERMINATED_STRING` | error | Unterminated string literal |
 | `TOKEN_UNBALANCED_PAREN` | error | Unbalanced parentheses |
 | `TOKEN_UNBALANCED_BRACKET` | error | Unbalanced brackets |

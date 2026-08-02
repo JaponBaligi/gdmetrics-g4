@@ -9,9 +9,13 @@ class CogComplexityResult:
 	var total_cog: int = 0
 	var breakdown: Dictionary = {}
 	var per_function: Dictionary = {}
+	var per_function_breakdown: Dictionary = {}
 	
 	func _init():
-		breakdown = {
+		breakdown = _empty_breakdown()
+
+	func _empty_breakdown() -> Dictionary:
+		return {
 			"if": 0,
 			"elif": 0,
 			"for": 0,
@@ -66,17 +70,18 @@ func _calculate_per_function(control_flow_nodes: Array, functions: Array):
 			_apply_node(node, func_result, true)
 		
 		result.per_function[func_info.name] = func_result.total_cog
+		result.per_function_breakdown[func_info.name] = func_result.breakdown.duplicate()
 
 func _apply_node(node, target_result: CogComplexityResult, allow_match_tracking: bool):
-	# Lambda scope: nodes inside lambdas do not contribute to parent scope
-	if node.lambda_depth > 0:
-		return
-	
 	if node.type == "lambda":
-		# Treat lambda as a new cognitive scope without leaking its contents.
-		# Count a flat +1 to reflect scope creation without adding nesting.
+		# Flat +1 for each lambda (including nested). Body nodes do not leak
+		# into the enclosing scope (see lambda_depth check below).
 		target_result.total_cog += 1
 		target_result.breakdown["lambda"] += 1
+		return
+
+	# Lambda body: score only via the lambda marker above, not parent totals.
+	if node.lambda_depth > 0:
 		return
 	
 	if node.type == "match":

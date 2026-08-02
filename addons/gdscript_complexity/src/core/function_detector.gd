@@ -17,6 +17,8 @@ class FunctionInfo:
 	var end_line: int
 	var parameters: Array = []
 	var return_type: String = ""
+	var ignored: bool = false
+	var pinned: bool = false
 	
 	func _init(n: String, t: String, line: int, col: int):
 		name = n
@@ -24,6 +26,8 @@ class FunctionInfo:
 		start_line = line
 		start_column = col
 		end_line = line
+		ignored = false
+		pinned = false
 	
 	func _to_string() -> String:
 		return "%s %s() at %d:%d-%d" % [type, name, start_line, start_column, end_line]

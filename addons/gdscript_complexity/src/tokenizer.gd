@@ -42,7 +42,7 @@ const KEYWORDS = [
 	"if", "elif", "else", "for", "while", "break", "continue", "return",
 	"func", "class", "extends", "var", "const", "signal", "class_name",
 	"and", "or", "not", "true", "false", "null",
-	"pass", "self", "super", "match", "yield", "await",
+	"pass", "self", "super", "match", "when", "yield", "await",
 	"in", "is", "as", "enum", "assert", "breakpoint", "preload", "load",
 	"static", "void", "tool", "onready", "export", "setget",
 	"master", "puppet", "remote", "sync", "remotesync", "mastersync", "puppetsync"
@@ -57,7 +57,6 @@ var tokens: Array = []
 var errors: Array = []
 var _error_codes = null
 
-var in_multiline_comment: bool = false
 var in_triple_string: bool = false
 var triple_string_quote: String = ""
 var multiline_buffer: String = ""
@@ -71,7 +70,6 @@ func tokenize_file(file_path: String) -> Array:
 
 	tokens.clear()
 	errors.clear()
-	in_multiline_comment = false
 	in_triple_string = false
 	triple_string_quote = ""
 	multiline_buffer = ""
@@ -107,27 +105,21 @@ func tokenize_file(file_path: String) -> Array:
 				line_number += 1
 				continue
 			line_continuation_pending = false
-		# Multi-line comments have no line-continuation semantics.
 		# Open strings (triple or regular multi-line) must still be scanned so a `\`
 		# *after* the closer counts as line continuation.
-		if in_multiline_comment:
-			tokenize_line(line, line_number)
+		var is_triple_delim = in_triple_string and triple_string_quote.length() == 3
+		var cont = _split_line_continuation(line, in_triple_string, triple_string_quote, is_triple_delim)
+		if cont.invalid:
+			_append_error("TOKEN_PARSE_ERROR", "Line %d:%d: Expected new line after \"\\\"." % [line_number, cont.column])
+			tokenize_line(cont.code, line_number)
 		else:
-			var is_triple_delim = in_triple_string and triple_string_quote.length() == 3
-			var cont = _split_line_continuation(line, in_triple_string, triple_string_quote, is_triple_delim)
-			if cont.invalid:
-				_append_error("TOKEN_PARSE_ERROR", "Line %d:%d: Expected new line after \"\\\"." % [line_number, cont.column])
-				tokenize_line(cont.code, line_number)
-			else:
-				tokenize_line(cont.code, line_number)
-				if cont.continues:
-					line_continuation_pending = true
+			tokenize_line(cont.code, line_number)
+			if cont.continues:
+				line_continuation_pending = true
 		line_number += 1
 	
 	file_helper.close_file(file)
 	
-	if in_multiline_comment:
-		_append_error("TOKEN_UNTERMINATED_COMMENT", "Unterminated multi-line comment starting at line %d" % multiline_start_line)
 	if in_triple_string:
 		_append_error("TOKEN_UNTERMINATED_STRING", "Unterminated string starting at line %d" % multiline_start_line)
 	if paren_depth != 0:
@@ -140,14 +132,6 @@ func tokenize_file(file_path: String) -> Array:
 	return tokens.duplicate()
 
 func tokenize_line(line: String, line_number: int):
-	if in_multiline_comment:
-		var result = _continue_multiline_comment(line, line_number)
-		if result.complete:
-			in_multiline_comment = false
-			multiline_buffer = ""
-			_tokenize_line_body(line, line_number, result.next_index, result.next_column)
-		return
-
 	if in_triple_string:
 		var result = _continue_triple_string(line, line_number)
 		if result.complete:
@@ -197,19 +181,6 @@ func _tokenize_line_body(line: String, line_number: int, start_i: int, start_col
 			var comment_text = line.substr(i)
 			tokens.append(Token.new(TokenType.COMMENT, comment_text, line_number, column))
 			break
-
-		if i + 2 < line.length() and line.substr(i, 3) == '"""':
-			var result = _parse_multiline_comment(line, i, line_number, column)
-			if result.multiline:
-				in_multiline_comment = true
-				multiline_buffer = result.token.value
-				multiline_start_line = line_number
-				return
-			else:
-				tokens.append(result.token)
-				i = result.next_index
-				column = result.next_column
-			continue
 
 		if current_char == '"' or current_char == "'":
 			var string_result = _parse_string(line, i, line_number, column, current_char)
@@ -606,36 +577,6 @@ func _parse_annotation(line: String, start: int, line_num: int, col: int) -> Dic
 
 func get_errors() -> Array:
 	return errors.duplicate()
-
-func _parse_multiline_comment(line: String, start: int, line_num: int, col: int) -> Dictionary:
-
-	var i = start + 3
-	var value = '"""'
-
-	while i < line.length():
-		if i + 2 < line.length() and line.substr(i, 3) == '"""':
-			value += '"""'
-			var token = Token.new(TokenType.COMMENT, value, line_num, col)
-			return {"token": token, "next_index": i + 3, "next_column": col + value.length(), "multiline": false}
-		value += line[i]
-		i += 1
-
-	value += "\n"
-	var token = Token.new(TokenType.COMMENT, value, line_num, col)
-	return {"token": token, "next_index": line.length(), "next_column": col + value.length(), "multiline": true}
-
-func _continue_multiline_comment(line: String, line_num: int) -> Dictionary:
-	var i = 0
-	while i < line.length():
-		if i + 2 < line.length() and line.substr(i, 3) == '"""':
-			multiline_buffer += line.substr(0, i) + '"""'
-			var token = Token.new(TokenType.COMMENT, multiline_buffer, multiline_start_line, 1)
-			tokens.append(token)
-			return {"complete": true, "next_index": i + 3, "next_column": i + 4}
-		i += 1
-
-	multiline_buffer += line + "\n"
-	return {"complete": false, "next_index": line.length(), "next_column": 1}
 
 func _parse_triple_string(line: String, start: int, line_num: int, col: int, quote_chars: String) -> Dictionary:
 

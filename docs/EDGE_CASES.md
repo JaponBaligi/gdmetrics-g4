@@ -31,9 +31,10 @@ Reference for tokenizer / control-flow fidelity. Sources: Godot `gdscript_tokeni
 | E2 | BOM / CRLF | 3+4 | P2 | No crash | `bom_crlf.gd` |
 | E3 | Unicode identifier | 3+4 | P2 | IDENTIFIER or soft warn | `unicode_ident.gd` |
 | A1 | `yield` / `await` | 3 / 4 | P2 | Not CC decisions | `yield_await.gd` |
+| D1 | `# gdmetrics:ignore` / `:pin` | 3+4 | P0 | Gate/Top-fixes skip or pin | `directive_ignore_pin.gd` |
 
 ## Scoring notes
 
-- **CC**: base 1 + each `if`/`elif`/`for`/`while`/`match` + each **match arm** + `and`/`or`/`not` (+ `&&`/`||` when `count_logical_operators`) + ternary `if`.
-- **C-COG**: Sonar-style nesting; match arms use flat pattern contribution (`1 + (patterns-1) + guard`); statement `if` ≠ ternary `if`.
-- **`case` keyword**: does not exist in GDScript; arms are indented lines ending with `:` under `match`.
+- **CC**: base 1 + each `if`/`elif`/`for`/`while`/`match` + each **match arm** + `and`/`or`/`not` (+ `&&`/`||` when `count_logical_operators`) + ternary `if`. Lambda *bodies* still contribute decisions to file CC.
+- **C-COG**: Sonar-style nesting; match arms use flat pattern contribution (`1 + (patterns-1) + guard`); statement `if` ≠ ternary `if`. Each lambda is +1; lambda body control-flow does **not** leak into the enclosing scope (nested lambdas still each +1).
+- **`case` keyword**: does not exist in GDScript; arms are indented lines ending with `:` under `match`. Nested `match` tracks arm indent per match block.

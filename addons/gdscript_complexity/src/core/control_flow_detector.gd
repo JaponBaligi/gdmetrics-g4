@@ -51,11 +51,9 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 	var i = 0
 	var indent_stack: Array = []  # Stack of indentation levels
 	var control_flow_stack: Array = []  # Stack of control flow contexts: {indent, type}
-	var lambda_stack: Array = []  # Stack of lambda indents
+	var lambda_stack: Array = []  # Stack of lambda *header* indents (body is deeper)
 	var last_line = -1
 	var last_line_indent = 0
-	var pending_lambda_indent: int = -1
-	var match_arm_indent: int = -1
 	var match_arm_lines: Dictionary = {}  # line -> true, avoid double-count
 	
 	while i < tokens.size():
@@ -76,12 +74,7 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 					_update_indent_stack(indent_stack, last_line_indent)
 					_update_control_flow_stack(control_flow_stack, last_line_indent)
 					in_match_block = _is_match_active(control_flow_stack)
-					if not in_match_block:
-						match_arm_indent = -1
 					_update_lambda_stack(lambda_stack, last_line_indent)
-					if pending_lambda_indent >= 0 and indent > pending_lambda_indent:
-						lambda_stack.append(indent)
-						pending_lambda_indent = -1
 			i += 1
 			continue
 		
@@ -92,21 +85,25 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 		# Detect real GDScript match arms (no `case` keyword): indent under match + `:` on line
 		if supports_match and in_match_block and not match_arm_lines.has(token.line):
 			var line_indent_arm = _get_line_indent(tokens, i)
-			var match_indent = _get_match_indent(control_flow_stack)
-			if match_indent >= 0 and line_indent_arm > match_indent:
-				if match_arm_indent < 0:
-					match_arm_indent = line_indent_arm
-				if line_indent_arm == match_arm_indent and _line_is_match_arm(tokens, i):
-					var details = _parse_match_arm_details(tokens, i)
-					var nesting_depth_arm = indent_stack.size()
-					var node_arm = ControlFlowNode.new("case", token.line, token.column, nesting_depth_arm)
-					node_arm.in_control_flow = control_flow_stack.size() > 0
-					node_arm.lambda_depth = lambda_stack.size()
-					node_arm.case_pattern_count = details.pattern_count
-					node_arm.case_has_guard = details.has_guard
-					detected_nodes.append(node_arm)
-					match_arm_lines[token.line] = true
-					control_flow_stack.append({"indent": line_indent_arm, "type": "case"})
+			var match_entry = _get_innermost_match_entry(control_flow_stack)
+			if match_entry != null:
+				var match_indent = int(match_entry.get("indent", -1))
+				if match_indent >= 0 and line_indent_arm > match_indent:
+					var arm_indent = int(match_entry.get("arm_indent", -1))
+					if arm_indent < 0:
+						match_entry["arm_indent"] = line_indent_arm
+						arm_indent = line_indent_arm
+					if line_indent_arm == arm_indent and _line_is_match_arm(tokens, i):
+						var details = _parse_match_arm_details(tokens, i)
+						var nesting_depth_arm = indent_stack.size()
+						var node_arm = ControlFlowNode.new("case", token.line, token.column, nesting_depth_arm)
+						node_arm.in_control_flow = control_flow_stack.size() > 0
+						node_arm.lambda_depth = lambda_stack.size()
+						node_arm.case_pattern_count = details.pattern_count
+						node_arm.case_has_guard = details.has_guard
+						detected_nodes.append(node_arm)
+						match_arm_lines[token.line] = true
+						control_flow_stack.append({"indent": line_indent_arm, "type": "case"})
 		
 		if token.type == TokenType.KEYWORD:
 			var line_indent = _get_line_indent(tokens, i)
@@ -117,8 +114,6 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 				_update_indent_stack(indent_stack, line_indent)
 				_update_control_flow_stack(control_flow_stack, line_indent)
 				in_match_block = _is_match_active(control_flow_stack)
-				if not in_match_block:
-					match_arm_indent = -1
 				_update_lambda_stack(lambda_stack, line_indent)
 			var nesting_depth = indent_stack.size()
 			var in_control_flow = control_flow_stack.size() > 0
@@ -157,8 +152,7 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 				node.lambda_depth = lambda_depth
 				detected_nodes.append(node)
 				in_match_block = true
-				match_arm_indent = -1
-				control_flow_stack.append({"indent": line_indent, "type": "match"})
+				control_flow_stack.append({"indent": line_indent, "type": "match", "arm_indent": -1})
 			elif token.value == "and":
 				var node = ControlFlowNode.new("and", token.line, token.column, nesting_depth)
 				node.in_control_flow = in_control_flow
@@ -186,11 +180,11 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 					node.in_control_flow = in_control_flow
 					node.lambda_depth = lambda_depth
 					detected_nodes.append(node)
-					pending_lambda_indent = line_indent
+					# Header indent: body lines are deeper; pop when indent returns to header.
+					lambda_stack.append(line_indent)
 
 		# C-style logical operators (counted when config enables it in CC calculator)
 		if token.type == TokenType.OPERATOR and (token.value == "&&" or token.value == "||"):
-			var line_indent_op = _get_line_indent(tokens, i)
 			var nesting_depth_op = indent_stack.size()
 			var op_type = "and" if token.value == "&&" else "or"
 			var node_op = ControlFlowNode.new(op_type, token.line, token.column, nesting_depth_op)
@@ -203,21 +197,17 @@ func detect_control_flow(tokens: Array, adapter = null) -> Array:
 	return detected_nodes.duplicate()
 
 func _get_line_indent(tokens: Array, token_index: int) -> int:
-	if token_index <= 0:
+	if token_index < 0 or token_index >= tokens.size():
 		return 0
-	
+
 	var TokenType = load(_tokenizer_script_path()).TokenType
 	var target_line = tokens[token_index].line
-	var i = token_index - 1
-	
-	while i >= 0:
-		var token = tokens[i]
-		if token.line != target_line:
-			break
-		if token.type == TokenType.WHITESPACE:
-			return _count_indent(token.value)
+	# Leading indent only — not mid-line spaces (e.g. `return func():` / `a if b else c`).
+	var i = token_index
+	while i > 0 and tokens[i - 1].line == target_line:
 		i -= 1
-	
+	if tokens[i].type == TokenType.WHITESPACE:
+		return _count_indent(tokens[i].value)
 	return 0
 
 func _count_indent(whitespace: String) -> int:
@@ -264,10 +254,16 @@ func _is_match_active(stack: Array) -> bool:
 	return false
 
 func _get_match_indent(stack: Array) -> int:
+	var entry = _get_innermost_match_entry(stack)
+	if entry == null:
+		return -1
+	return int(entry.get("indent", 0))
+
+func _get_innermost_match_entry(stack: Array):
 	for idx in range(stack.size() - 1, -1, -1):
 		if stack[idx].get("type", "") == "match":
-			return int(stack[idx].get("indent", 0))
-	return -1
+			return stack[idx]
+	return null
 
 func _is_match_statement(tokens: Array, match_index: int) -> bool:
 	# Reject method calls like `text.match(pattern)` — statement match has no `.` immediately before it

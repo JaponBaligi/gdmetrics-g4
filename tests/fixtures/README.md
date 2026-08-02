@@ -25,19 +25,11 @@ This directory contains GDScript test files with known CC (Cyclomatic Complexity
 | `unbalanced_brackets.gd` | - | - | Unbalanced brackets (should handle gracefully) |
 | `large_file.gd` | - | - | Large file placeholder (for performance testing) |
 
-## CC Calculation Rules
+## CC / C-COG rules
 
-- Base complexity: 1
-- Each `if`, `elif`, `for`, `while`, `match`, `case` adds +1
-- Each logical operator (`and`, `or`, `not`) adds +1
+Canonical scoring and edge constructs: [docs/EDGE_CASES.md](../../docs/EDGE_CASES.md).
 
-## C-COG Calculation Rules
-
-- Each control structure adds +1 base
-- Each nesting level adds +1 to the contribution
-- Early exits (`return`, `break`, `continue`) add +1 only when inside control flow
-- `case` statements add +1 regardless of nesting depth (no nesting penalty)
-- Formula: `contribution = 1 + depth`
+GDScript has no `case` keyword — match arms are indented lines ending with `:` under `match`.
 
 ## Usage
 
