@@ -19,11 +19,17 @@ func evaluate(project_result, config) -> Dictionary:
 
 	var warnings = []
 	var failures = []
+	var scanner = load("res://addons/gdscript_complexity/src/core/directive_scanner.gd").new()
 
 	for result in project_result.file_results:
 		if not result.success:
 			continue
+		var directives = result.per_function_directives
+		if typeof(directives) != TYPE_DICTIONARY:
+			directives = {}
 		for func_info in result.functions:
+			if scanner.is_ignored(func_info, directives):
+				continue
 			var func_name = func_info.name
 			var cc_value = 0
 			var cog_value = 0
@@ -48,9 +54,14 @@ func evaluate(project_result, config) -> Dictionary:
 			nest_warn, nest_fail, params_warn, params_fail, loc_warn, loc_fail
 		)
 
+	scanner = null
+	var fail_keys = []
+	for row in failures:
+		fail_keys.append("%s|%s|%s" % [row["file"], row["function"], row["metric"]])
 	return {
 		"warnings": warnings,
 		"failures": failures,
+		"fail_keys": fail_keys,
 		"warn_count": warnings.size(),
 		"fail_count": failures.size(),
 		"cc_warn": cc_warn,

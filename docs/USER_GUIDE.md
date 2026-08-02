@@ -36,7 +36,30 @@ Create `complexity_config.json` in the project root (or copy `complexity_config.
 
 Stable report/config contract: [SCHEMA.md](SCHEMA.md) (`"version": "1.0"`).
 - `report.auto_export`: auto write after analysis
-- `report.annotate_editor`: enable/disable editor warnings
+- `report.annotate_editor`: enable/disable editor warnings (default off)
+- `report.churn_hotspots`: `auto` (default), `on`, or `off` — mark scary files that git recently touched
+- `report.churn_since`: git `--since` window (default `90 days ago`)
+- `report.god_complex_func_min`: how many warn-level functions make a large file “scary” (default `3`)
+
+### Ignore / pin comments
+
+On the line above a function, or trailing on the `func` line:
+
+```gdscript
+# gdmetrics:ignore
+func legacy_mess():
+	pass
+
+# gdmetrics:pin
+func keep_watching():
+	pass
+```
+
+- **ignore** — still scored; hidden from Top fixes and fail counts
+- **pin** — always shown in Top fixes (watch list)
+
+HTML exports include a **What to fix next** section (same ranking as the dock) and **Big scary files** (god-script rollups; Hot = scary + recent git churn when available).
+
 - `performance.enable_caching`: caching on/off
 - `performance.cache_path`: cache directory
 - `performance.incremental_analysis`: analyze only changed files

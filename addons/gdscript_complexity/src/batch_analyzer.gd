@@ -19,6 +19,9 @@ class FileResult:
 	var cog_breakdown: Dictionary = {}
 	var per_function_cc: Dictionary = {}
 	var per_function_cog: Dictionary = {}
+	var per_function_cc_breakdown: Dictionary = {}
+	var per_function_cog_breakdown: Dictionary = {}
+	var per_function_directives: Dictionary = {}
 	var max_nesting_depth: int = 0
 	var match_arm_count: int = 0
 	var lambda_count: int = 0
@@ -200,6 +203,9 @@ func _analyze_file(file_path: String, config, profiling: bool = false):  # -> Fi
 		result.errors += detector_errors
 	
 	var functions = _function_detector_instance.detect_functions(tokens)
+	var directive_scanner = load(ADDON_SRC + "core/directive_scanner.gd").new()
+	result.per_function_directives = directive_scanner.apply_to_functions(tokens, functions)
+	directive_scanner = null
 	result.functions = functions
 	
 	var classes = _class_detector_instance.detect_classes(tokens)
@@ -217,12 +223,15 @@ func _analyze_file(file_path: String, config, profiling: bool = false):  # -> Fi
 	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes, count_logical)
 	result.cc = cc
 	result.cc_breakdown = _cc_calc_instance.get_breakdown()
-	result.per_function_cc = _calculate_per_function_cc(control_flow_nodes, functions)
+	var per_cc = _calculate_per_function_cc_with_breakdown(control_flow_nodes, functions, count_logical)
+	result.per_function_cc = per_cc["scores"]
+	result.per_function_cc_breakdown = per_cc["breakdowns"]
 	
 	var cog_result = _cog_calc_instance.calculate_cog(control_flow_nodes, functions)
 	result.cog = cog_result.total_cog
 	result.cog_breakdown = cog_result.breakdown
 	result.per_function_cog = cog_result.per_function
+	result.per_function_cog_breakdown = cog_result.per_function_breakdown
 
 	_fill_extra_metrics(result, control_flow_nodes, functions, tokens)
 	
@@ -257,12 +266,24 @@ func _restore_file_result_from_cache(cached_data: Dictionary) -> FileResult:
 	result.cog_breakdown = cached_data.get("cog_breakdown", {})
 	result.per_function_cc = cached_data.get("per_function_cc", {})
 	result.per_function_cog = cached_data.get("per_function_cog", {})
+	result.per_function_cc_breakdown = cached_data.get("per_function_cc_breakdown", {})
+	result.per_function_cog_breakdown = cached_data.get("per_function_cog_breakdown", {})
+	result.per_function_directives = cached_data.get("per_function_directives", {})
+	result.max_nesting_depth = cached_data.get("max_nesting_depth", 0)
+	result.match_arm_count = cached_data.get("match_arm_count", 0)
+	result.lambda_count = cached_data.get("lambda_count", 0)
+	result.max_params = cached_data.get("max_params", 0)
+	result.loc_code = cached_data.get("loc_code", 0)
 	return result
 
 func _calculate_per_function_cc(control_flow_nodes: Array, functions: Array) -> Dictionary:
-	var per_function = {}
+	return _calculate_per_function_cc_with_breakdown(control_flow_nodes, functions, true)["scores"]
+
+func _calculate_per_function_cc_with_breakdown(control_flow_nodes: Array, functions: Array, count_logical: bool) -> Dictionary:
+	var scores = {}
+	var breakdowns = {}
 	if functions.size() == 0:
-		return per_function
+		return {"scores": scores, "breakdowns": breakdowns}
 	
 	for func_info in functions:
 		var func_nodes: Array = []
@@ -270,10 +291,11 @@ func _calculate_per_function_cc(control_flow_nodes: Array, functions: Array) -> 
 			if node.line >= func_info.start_line and node.line <= func_info.end_line:
 				func_nodes.append(node)
 		
-		var func_cc = _cc_calc_instance.calculate_cc(func_nodes, true)
-		per_function[func_info.name] = func_cc
+		var func_cc = _cc_calc_instance.calculate_cc(func_nodes, count_logical)
+		scores[func_info.name] = func_cc
+		breakdowns[func_info.name] = _cc_calc_instance.get_breakdown()
 	
-	return per_function
+	return {"scores": scores, "breakdowns": breakdowns}
 
 func _fill_extra_metrics(result: FileResult, control_flow_nodes: Array, functions: Array, tokens: Array) -> void:
 	var max_depth = 0

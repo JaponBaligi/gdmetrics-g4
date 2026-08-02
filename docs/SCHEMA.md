@@ -17,6 +17,8 @@ Produced by `report_generator.generate_report()` (Godot 3/4 variants).
 | `files` | array | Per-file results |
 | `errors` | array | Project-level error strings |
 | `telemetry` | object | Optional; only if `telemetry.enable_anonymous_reporting` |
+| `god_scripts` | array | Optional; additive — big scary files rollup |
+| `churn_hotspots` | array | Optional; additive — scary files with recent git churn |
 
 ### `project`
 
@@ -71,8 +73,28 @@ Produced by `report_generator.generate_report()` (Godot 3/4 variants).
 | `return_type` | string | |
 | `cc` | int | Present when computed |
 | `cog` | int | Present when computed |
+| `cc_breakdown` | object | Optional; additive — per-construct CC contribution counts |
+| `cog_breakdown` | object | Optional; additive — per-construct C-COG contribution counts |
+| `why` | string | Optional; additive — plain-language score explanation |
+| `ignored` | bool | Optional; additive — `# gdmetrics:ignore` on/above the function |
+| `pinned` | bool | Optional; additive — `# gdmetrics:pin` watch-list marker |
 
 Consumers should treat `cc` and `cog` as the stable per-function metrics under v1.
+Optional `cc_breakdown`, `cog_breakdown`, `why`, `ignored`, and `pinned` may be omitted by older producers.
+
+History JSONL records may also include optional `fail_keys` (array of `"file|function|metric"` strings) for regression diffs.
+
+### Optional `god_scripts[]` / `churn_hotspots[]`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `script_path` | string | File path |
+| `cc` / `cog` / `loc_code` | int | File totals |
+| `function_count` | int | |
+| `complex_function_count` | int | Functions at/above warn |
+| `label` | string | e.g. Fix soon, Hard to read, Hot |
+| `reason` / `reason_text` | string | Machine / human why |
+| `churn_lines` | int | Only on churn_hotspots — added+deleted lines in window |
 
 ## Config keys (v1)
 
@@ -101,6 +123,10 @@ Root object in `complexity_config.json` (see `complexity_config.example.json`).
 | `html_output_path` | `res://complexity_report.html` | HTML |
 | `history_path` | `complexity_history.jsonl` | Append-only history |
 | `auto_export` | `false` | Editor auto-export after analysis |
+| `annotate_editor` | `false` | Editor gutter warnings |
+| `churn_hotspots` | `"auto"` | Optional; `auto`/`on`/`off` — git overlay when repo present |
+| `churn_since` | `"90 days ago"` | Optional; passed to `git log --since` |
+| `god_complex_func_min` | `3` | Optional; min warn-level funcs for large-file god-script rule |
 
 CLI flags may override output/history paths; the keys above remain the config contract.
 

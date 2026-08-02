@@ -164,6 +164,9 @@ func _analyze_file(file_path: String):  # -> BatchAnalyzer.FileResult - loaded d
 		result.errors += detector_errors
 	
 	var functions = _function_detector_instance.detect_functions(tokens)
+	var directive_scanner = load(SRC_ROOT + "/core/directive_scanner.gd").new()
+	result.per_function_directives = directive_scanner.apply_to_functions(tokens, functions)
+	directive_scanner = null
 	result.functions = functions
 	
 	var classes = _class_detector_instance.detect_classes(tokens)
@@ -178,26 +181,35 @@ func _analyze_file(file_path: String):  # -> BatchAnalyzer.FileResult - loaded d
 	var cc = _cc_calc_instance.calculate_cc(control_flow_nodes, count_logical)
 	result.cc = cc
 	result.cc_breakdown = _cc_calc_instance.get_breakdown()
-	result.per_function_cc = _calculate_per_function_cc(control_flow_nodes, functions)
+	var per_cc = _calculate_per_function_cc_with_breakdown(control_flow_nodes, functions, count_logical)
+	result.per_function_cc = per_cc["scores"]
+	result.per_function_cc_breakdown = per_cc["breakdowns"]
 	
 	var cog_result = _cog_calc_instance.calculate_cog(control_flow_nodes, functions)
 	result.cog = cog_result.total_cog
 	result.cog_breakdown = cog_result.breakdown
 	result.per_function_cog = cog_result.per_function
+	result.per_function_cog_breakdown = cog_result.per_function_breakdown
 	
 	var confidence_weights = {}
 	if config != null and config.parser_config.has("confidence_weights"):
 		confidence_weights = config.parser_config["confidence_weights"]
 	var confidence_result = _confidence_calc_instance.calculate_confidence(tokens, tokenizer_errors, version_adapter, confidence_weights)
 	result.confidence = confidence_result.score
+
+	_fill_extra_metrics(result, control_flow_nodes, functions, tokens)
 	
 	result.success = true
 	return result
 
 func _calculate_per_function_cc(control_flow_nodes: Array, functions: Array) -> Dictionary:
-	var per_function = {}
+	return _calculate_per_function_cc_with_breakdown(control_flow_nodes, functions, true)["scores"]
+
+func _calculate_per_function_cc_with_breakdown(control_flow_nodes: Array, functions: Array, count_logical: bool) -> Dictionary:
+	var scores = {}
+	var breakdowns = {}
 	if functions.size() == 0:
-		return per_function
+		return {"scores": scores, "breakdowns": breakdowns}
 	
 	for func_info in functions:
 		var func_nodes: Array = []
@@ -205,10 +217,48 @@ func _calculate_per_function_cc(control_flow_nodes: Array, functions: Array) -> 
 			if node.line >= func_info.start_line and node.line <= func_info.end_line:
 				func_nodes.append(node)
 		
-		var func_cc = _cc_calc_instance.calculate_cc(func_nodes)
-		per_function[func_info.name] = func_cc
+		var func_cc = _cc_calc_instance.calculate_cc(func_nodes, count_logical)
+		scores[func_info.name] = func_cc
+		breakdowns[func_info.name] = _cc_calc_instance.get_breakdown()
 	
-	return per_function
+	return {"scores": scores, "breakdowns": breakdowns}
+
+func _fill_extra_metrics(result, control_flow_nodes: Array, functions: Array, tokens: Array = []) -> void:
+	var max_depth = 0
+	var arms = 0
+	var lambdas = 0
+	for node in control_flow_nodes:
+		if node.depth > max_depth:
+			max_depth = node.depth
+		if node.type == "case":
+			arms += 1
+		elif node.type == "lambda":
+			lambdas += 1
+	result.max_nesting_depth = max_depth
+	result.match_arm_count = arms
+	result.lambda_count = lambdas
+	var max_params = 0
+	for func_info in functions:
+		var pcount = 0
+		if typeof(func_info.parameters) == TYPE_ARRAY:
+			pcount = func_info.parameters.size()
+		if pcount > max_params:
+			max_params = pcount
+	result.max_params = max_params
+	if tokens.size() == 0:
+		result.loc_code = 0
+		return
+	var tok_script = load(SRC_ROOT + "/tokenizer.gd")
+	if tok_script == null:
+		result.loc_code = 0
+		return
+	var TokenType = tok_script.TokenType
+	var code_lines = {}
+	for token in tokens:
+		if token.type == TokenType.WHITESPACE or token.type == TokenType.COMMENT or token.type == TokenType.NEWLINE:
+			continue
+		code_lines[token.line] = true
+	result.loc_code = code_lines.size()
 
 func _finalize_results():
 	if project_result.successful_files > 0:
