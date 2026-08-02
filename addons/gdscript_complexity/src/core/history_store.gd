@@ -28,7 +28,7 @@ func resolve_path(config, override_path: String = "") -> String:
 			return _sanitize_path(hp)
 	return DEFAULT_HISTORY_PATH
 
-func build_record(project_result, fail_count: int = 0) -> Dictionary:
+func build_record(project_result, fail_count: int = 0, fail_keys: Array = []) -> Dictionary:
 	_ensure_file_helper()
 	var top_cog = []
 	var sources = []
@@ -51,6 +51,9 @@ func build_record(project_result, fail_count: int = 0) -> Dictionary:
 	var ts = ""
 	if _file_helper != null and _file_helper.has_method("timestamp_utc"):
 		ts = _file_helper.timestamp_utc()
+	var keys = []
+	for k in fail_keys:
+		keys.append(str(k))
 	return {
 		"timestamp": ts,
 		"totals": {
@@ -63,6 +66,7 @@ func build_record(project_result, fail_count: int = 0) -> Dictionary:
 			"cog": float(project_result.average_cog)
 		},
 		"fail_count": int(fail_count),
+		"fail_keys": keys,
 		"top_cog": top_cog
 	}
 
@@ -83,9 +87,9 @@ func append_record(record: Dictionary, history_path: String) -> bool:
 	_file_helper.close_file(f)
 	return true
 
-func append_from_result(project_result, config, fail_count: int = 0, override_path: String = "") -> bool:
+func append_from_result(project_result, config, fail_count: int = 0, override_path: String = "", fail_keys: Array = []) -> bool:
 	var path = resolve_path(config, override_path)
-	var record = build_record(project_result, fail_count)
+	var record = build_record(project_result, fail_count, fail_keys)
 	return append_record(record, path)
 
 func load_previous(history_path: String) -> Dictionary:
@@ -130,6 +134,19 @@ func diff_records(current: Dictionary, previous: Dictionary) -> Dictionary:
 	var prev_tot = previous.get("totals", {})
 	var cur_avg = current.get("averages", {})
 	var prev_avg = previous.get("averages", {})
+	var cur_keys = current.get("fail_keys", [])
+	var prev_keys = previous.get("fail_keys", [])
+	if typeof(cur_keys) != TYPE_ARRAY:
+		cur_keys = []
+	if typeof(prev_keys) != TYPE_ARRAY:
+		prev_keys = []
+	var prev_set = {}
+	for k in prev_keys:
+		prev_set[str(k)] = true
+	var new_fail_count = 0
+	for k in cur_keys:
+		if not prev_set.has(str(k)):
+			new_fail_count += 1
 	return {
 		"delta_total_cc": int(cur_tot.get("cc", 0)) - int(prev_tot.get("cc", 0)),
 		"delta_total_cog": int(cur_tot.get("cog", 0)) - int(prev_tot.get("cog", 0)),
@@ -137,6 +154,7 @@ func diff_records(current: Dictionary, previous: Dictionary) -> Dictionary:
 		"delta_avg_cog": float(cur_avg.get("cog", 0.0)) - float(prev_avg.get("cog", 0.0)),
 		"fail_count": int(current.get("fail_count", 0)),
 		"previous_fail_count": int(previous.get("fail_count", 0)),
+		"new_fail_count": new_fail_count,
 		"avg_cog": float(cur_avg.get("cog", 0.0)),
 		"previous_avg_cog": float(prev_avg.get("cog", 0.0))
 	}
@@ -166,6 +184,8 @@ func is_regression(diff: Dictionary) -> bool:
 	if float(diff.get("avg_cog", 0.0)) > float(diff.get("previous_avg_cog", 0.0)):
 		return true
 	if int(diff.get("fail_count", 0)) > int(diff.get("previous_fail_count", 0)):
+		return true
+	if int(diff.get("new_fail_count", 0)) > 0:
 		return true
 	return false
 
