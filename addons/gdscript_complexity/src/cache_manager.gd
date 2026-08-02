@@ -215,8 +215,16 @@ func _file_result_to_dict(file_result) -> Dictionary:
 		"errors": file_result.errors,
 		"cc_breakdown": file_result.cc_breakdown,
 		"cog_breakdown": file_result.cog_breakdown,
-			"per_function_cc": file_result.per_function_cc,
-		"per_function_cog": file_result.per_function_cog
+		"per_function_cc": file_result.per_function_cc,
+		"per_function_cog": file_result.per_function_cog,
+		"per_function_cc_breakdown": file_result.per_function_cc_breakdown,
+		"per_function_cog_breakdown": file_result.per_function_cog_breakdown,
+		"per_function_directives": file_result.per_function_directives,
+		"max_nesting_depth": file_result.max_nesting_depth,
+		"match_arm_count": file_result.match_arm_count,
+		"lambda_count": file_result.lambda_count,
+		"max_params": file_result.max_params,
+		"loc_code": file_result.loc_code
 	}
 
 # Convert dictionary back to FileResult
@@ -234,6 +242,14 @@ func _dict_to_file_result(data: Dictionary):
 	result.cog_breakdown = data.get("cog_breakdown", {})
 	result.per_function_cc = data.get("per_function_cc", {})
 	result.per_function_cog = data.get("per_function_cog", {})
+	result.per_function_cc_breakdown = data.get("per_function_cc_breakdown", {})
+	result.per_function_cog_breakdown = data.get("per_function_cog_breakdown", {})
+	result.per_function_directives = data.get("per_function_directives", {})
+	result.max_nesting_depth = data.get("max_nesting_depth", 0)
+	result.match_arm_count = data.get("match_arm_count", 0)
+	result.lambda_count = data.get("lambda_count", 0)
+	result.max_params = data.get("max_params", 0)
+	result.loc_code = data.get("loc_code", 0)
 	return result
 
 # Clean up orphaned cache entries (files that no longer exist)

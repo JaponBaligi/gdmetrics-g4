@@ -23,7 +23,12 @@ $CoreFiles = @(
 	"history_store.gd",
 	"error_codes.gd",
 	"error_summary.gd",
-	"logger.gd"
+	"logger.gd",
+	"score_explainer.gd",
+	"directive_scanner.gd",
+	"top_fixes_builder.gd",
+	"god_script_rollup.gd",
+	"churn_hotspots.gd"
 )
 
 $relCore = "addons\gdscript_complexity\src\core"
