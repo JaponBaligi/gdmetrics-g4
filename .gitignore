@@ -43,6 +43,7 @@ dist/
 *.dylib
 
 # IDE / editor files
+.cursor/
 .vscode/*
 !.vscode/settings.json
 .idea/
