@@ -62,12 +62,15 @@ class Config:
 			"html_output_path": "res://complexity_report.html",
 			"history_path": "complexity_history.jsonl",
 			"auto_export": false,
-			"annotate_editor": false
+			"annotate_editor": false,
+			"churn_hotspots": "auto",
+			"churn_since": "90 days ago",
+			"god_complex_func_min": 3
 		}
 		performance_config = {
-			"enable_caching": false,
-			"cache_path": "res://.complexity_cache",
-			"incremental_analysis": false,
+			"enable_caching": true,
+			"cache_path": ".gdcomplexity_cache",
+			"incremental_analysis": true,
 			"enable_profiling": false
 		}
 		telemetry_config = {
@@ -303,6 +306,16 @@ func _parse_report_config(report_data: Dictionary):
 	if report_data.has("history_path"):
 		if report_data["history_path"] is String:
 			config.report_config["history_path"] = report_data["history_path"]
+
+	if report_data.has("churn_hotspots"):
+		config.report_config["churn_hotspots"] = str(report_data["churn_hotspots"])
+
+	if report_data.has("churn_since"):
+		if report_data["churn_since"] is String:
+			config.report_config["churn_since"] = report_data["churn_since"]
+
+	if report_data.has("god_complex_func_min"):
+		config.report_config["god_complex_func_min"] = int(report_data["god_complex_func_min"])
 
 func _parse_performance_config(perf_data: Dictionary):
 	if perf_data.has("enable_caching"):

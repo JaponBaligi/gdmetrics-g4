@@ -43,7 +43,11 @@
 		"csv_output_path": "res://complexity_report.csv",
 		"html_output_path": "res://complexity_report.html",
 		"history_path": "complexity_history.jsonl",
-		"auto_export": false
+		"auto_export": false,
+		"annotate_editor": false,
+		"churn_hotspots": "auto",
+		"churn_since": "90 days ago",
+		"god_complex_func_min": 3
 	},
 	"performance": {
 		"enable_caching": true,

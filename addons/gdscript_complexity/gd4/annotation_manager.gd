@@ -103,7 +103,13 @@ func annotate_file_results(file_result, cc_fail: int, cog_fail: int, clear_first
 		clear_annotations(script_path)
 
 	var annotated_any = false
+	var scanner = load("res://addons/gdscript_complexity/src/core/directive_scanner.gd").new()
+	var directives = file_result.per_function_directives
+	if typeof(directives) != TYPE_DICTIONARY:
+		directives = {}
 	for func_info in file_result.functions:
+		if scanner.is_ignored(func_info, directives):
+			continue
 		var fname = func_info.name
 		var line = func_info.start_line
 		if line < 1:
@@ -118,6 +124,7 @@ func annotate_file_results(file_result, cc_fail: int, cog_fail: int, clear_first
 			if cog >= cog_fail:
 				add_cog_annotation(script_path, line, cog, cog_fail, "error")
 				annotated_any = true
+	scanner = null
 
 	# Fallback: file-level totals when function metrics are unavailable
 	if not annotated_any and file_result.functions.size() == 0:
@@ -152,8 +159,9 @@ func _normalize_severity(severity: String) -> String:
 	return "warning"
 
 func _fallback_log(script_path: String, line: int, message: String, severity: String):
+	# Never push_error for complexity findings — that looks like engine failures and floods Output.
 	var log_message = "[ComplexityAnalyzer] %s:%d - %s: %s" % [script_path, line, severity.to_upper(), message]
-	if severity == "error":
-		push_error(log_message)
+	if severity == "error" or severity == "warning":
+		push_warning(log_message)
 	else:
 		print(log_message)
