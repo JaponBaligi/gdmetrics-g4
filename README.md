@@ -450,34 +450,41 @@ For detailed breaking changes, see the [BREAKING_CHANGES.md](docs/BREAKING_CHANG
 
 ## Roadmap
 
-Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). One tagged release at a time.
+Versions use [Pride Versioning](https://pridever.org/) (`PROUD.DEFAULT.SHAME`). One tagged release at a time. Schema **1.0** stays frozen until Pride **2.0.0**.
 
-### Current Release (v1.0.0 — PROUD)
-- ✅ CC and C-COG metrics
-- ✅ JSON / CSV / HTML export
-- ✅ Dock Nest / Params / LOC columns
-- ✅ Structural threshold gates (NEST / PARAMS / LOC)
-- ✅ JSON per-function `"cc"` / `"cog"` fields
-- ✅ Godot 4.x support
-- ✅ Caching system
-- ✅ CLI integration (`cli/analyze_project.gd`)
-- ✅ Match/`when`, lambdas, multiline strings, edge-case corpus gates
-- ✅ `threshold_fail` CI exit codes + breach summary
-- ✅ Consumer GitHub Actions template (`examples/github-actions/`)
+**Mission:** stay a static analyzer for GDScript complexity and maintainability. Scale in **depth** (richer metrics, gates, reports, history) — not breadth (AI, formatters, profilers, other languages).
+
+### Shipped (1.x DEFAULT on PROUD 1.0.0)
+- ✅ CC and C-COG (per file / per function), confidence, score explanations
+- ✅ Nesting depth, parameter counts, LOC, lambda counts (dock + JSON)
+- ✅ Structural threshold gates (NEST / PARAMS / LOC) + CC/C-COG `threshold_fail`
+- ✅ JSON / CSV / HTML export; Top-fixes / god-script rollups; optional git churn hotspots
+- ✅ `# gdmetrics:ignore` / `:pin` directives
 - ✅ Append-only `complexity_history.jsonl` + CLI `--diff` / `--fail-on-diff-regression`
-- ✅ CI matrix Godot 4.0.4 + 4.2.0
-- ✅ Schema freeze (`docs/SCHEMA.md`, report `"version": "1.0"`)
-- ✅ Shared `src/core/` + `scripts/sync_core.ps1` (g4 canonical → g3)
+- ✅ CLI + consumer GitHub Actions template; Godot **4.x** (CI on 4.0.4 + 4.2.0)
+- ✅ Shared `src/core/` → sync to [gdmetrics-g3](https://github.com/JaponBaligi/gdmetrics-g3) (`scripts/sync_core.ps1`)
 - ✅ Editor annotations for functions ≥ `threshold_fail` (`add_error_annotation`)
 
-### Planned (post-1.0)
-- 🔲 Custom metric plugins
-- 🔲 Further DEFAULT polish without schema breaks
+### What's next (priority order)
+1. **Quality-gate clarity** — checklist-style CI output (`✓ CC ✗ LOC … Overall FAIL`); function-level LOC in gates where cheap
+2. **History trends** — averages / top regressions / most-improved from existing JSONL (CLI + HTML)
+3. **HTML dashboard polish** — top-N functions, distributions, threshold table, optional trend charts (still one static file)
+4. **Shallow dependency map (optional)** — `extends` / `class_name` / preload edges only; not a full scene-architecture browser
+5. **Composite maintainability score** — honest 0–100 from metrics you already compute (CC, C-COG, LOC, nesting). Prefer this over a marketing “MI” label unless Halstead is implemented for real
 
-### Under Consideration
-- Halstead Metrics
-- Maintainability Index calculation
+Additive fields only under schema 1.0; anything that breaks the contract waits for Pride 2.0.0.
+
+### Under consideration
+- Halstead metrics (only if pursuing classical Maintainability Index)
+- Custom metric plugins
 - Godot 5.x when stable
+
+### Out of scope
+- AI suggestions / auto-refactor / code generation
+- Runtime profiling
+- Formatting / general linting
+- C# or other languages
+- Asymptotic Big-O analysis (needs semantics this parser does not claim)
 
 ## License
 
